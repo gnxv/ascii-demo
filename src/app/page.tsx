@@ -89,7 +89,10 @@ export default function Home() {
           <div className="hero-kicker text-[11px] tracking-[0.36em] uppercase mb-4 opacity-80 font-medium">
             GLOBAL BESPOKE FITNESS DESIGN AND SPACES
           </div>
-          <h1 className="hero-title font-semibold leading-[0.83] tracking-[-0.033em]" style={{ fontSize: "clamp(52px, 7vw, 67px)" }}>
+          <h1
+            className="hero-title font-semibold leading-[0.833] tracking-[-0.0333em]"
+            style={{ fontSize: "66.67px" }}
+          >
             BESPOKE<br />ARCHITECTURAL<br />FITNESS
           </h1>
           <p className="hero-desc mt-6 text-base md:text-[17px] max-w-md opacity-90 leading-snug">
@@ -106,7 +109,7 @@ export default function Home() {
             We create extraordinary training spaces that inspire strength, movement, and balance, blending architectural precision and innovation.
           </h2>
           <div className="mt-10">
-            <a href="#products" className="inline-flex items-center h-12 min-w-[10em] justify-center border border-[#3b322d] bg-[#f1e6df] px-6 text-[12px] tracking-[0.14em] uppercase font-medium hover:bg-[#3b322d] hover:text-[#fff9f5] transition-all duration-300">
+            <a href="#products" className="btn-kinetics font-mono">
               EXPLORE
             </a>
           </div>

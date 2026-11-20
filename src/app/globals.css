@@ -28,13 +28,18 @@ body {
 .btn-kinetics {
   display: inline-flex;
   align-items: center;
-  border: 1px solid currentColor;
-  padding: 0.65rem 1.75rem;
-  font-size: 12px;
-  letter-spacing: 0.14em;
+  justify-content: center;
+  height: 48px;
+  min-width: 10em;
+  padding: 0 1.5rem;
+  font-size: 13px;
+  letter-spacing: -0.02em;
   text-transform: uppercase;
   font-weight: 500;
+  font-family: var(--font-spline), ui-monospace, monospace;
+  border: 1px solid currentColor;
   transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  background: transparent;
 }
 
 .btn-kinetics:hover {

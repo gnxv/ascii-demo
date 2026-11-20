@@ -47,7 +47,7 @@ export default function Header() {
           </Link>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="h-12 min-w-[10em] text-[11px] tracking-[0.16em] uppercase text-white border border-white/40 bg-[#f1e6df]/10 backdrop-blur-sm px-5 hover:bg-[#f1e6df] hover:text-[#3b322d] transition-all duration-300"
+            className="btn-kinetics font-mono text-white border-white/50 hover:bg-[#f1e6df] hover:text-[#3b322d]"
           >
             {isOpen ? "CLOSE" : "MENU"}
           </button>
