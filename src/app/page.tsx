@@ -4,86 +4,135 @@ export default function Home() {
   return (
     <>
       {/* Hero */}
-      <section className="video-hero">
-        <video
-          autoPlay
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover"
-        >
+      <section className="hero">
+        <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover">
           <source src="/hero.mp4" type="video/mp4" />
         </video>
-        <div className="video-overlay" />
-        <div className="relative z-10 h-full flex flex-col items-center justify-center text-center text-white px-6">
-          <div className="font-display text-5xl md:text-7xl lg:text-8xl tracking-widest mb-6">
-            AUREA
-          </div>
-          <p className="max-w-xl text-lg md:text-xl font-light tracking-wide mb-10 opacity-90">
-            Пространство силы, восстановления<br />и тихой роскоши
+        <div className="hero-overlay" />
+        <div className="hero-content">
+          <div className="text-xs tracking-[0.4em] uppercase text-white/70 mb-6">Краснодар</div>
+          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white leading-[0.95] tracking-tight max-w-4xl">
+            High-Performance<br />Living
+          </h1>
+          <p className="mt-8 text-lg md:text-xl text-white/80 max-w-xl font-light">
+            Пространство, где тренировка, восстановление и эстетика работают как одна система.
           </p>
-          <Link
-            href="/membership"
-            className="border border-white/60 px-10 py-4 text-sm tracking-widest uppercase hover:bg-white hover:text-aurea-dark transition duration-300"
-          >
-            Стать членом
-          </Link>
+          <div className="mt-12">
+            <Link href="#membership" className="btn-primary">
+              Стать членом
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Intro */}
-      <section className="max-w-4xl mx-auto px-6 py-32 text-center">
-        <div className="text-xs tracking-[0.3em] uppercase text-aurea-gold mb-6">Два клуба. Одна философия</div>
-        <h2 className="font-display text-4xl md:text-5xl mb-8 leading-tight">
-          Архитектура движения
-        </h2>
-        <p className="text-lg leading-relaxed text-aurea-charcoal/80">
-          AUREA — это не просто тренажёрный зал. Это тщательно спроектированное пространство, 
-          где сила встречается с эстетикой, а восстановление становится частью ритуала. 
-          Две локации в Краснодаре: плотный и динамичный City и просторный Park с бассейном и спа.
-        </p>
+      <section className="py-32 px-6 md:px-10 max-w-[1400px] mx-auto">
+        <div className="grid md:grid-cols-12 gap-12">
+          <div className="md:col-span-4">
+            <div className="section-title">Философия</div>
+            <h2 className="font-display text-4xl md:text-5xl leading-tight">
+              Это не фитнес.<br />Это жизнь.
+            </h2>
+          </div>
+          <div className="md:col-span-7 md:col-start-6 text-lg leading-relaxed text-neutral-700">
+            <p>
+              AUREA создана для тех, кто воспринимает тело и пространство как единую систему. 
+              Два клуба в Краснодаре — City и Park — работают как одна экосистема: интенсивность в одном, глубина восстановления в другом.
+            </p>
+            <p className="mt-6">
+              Архитектура, свет, материалы и ритм дня продуманы так, чтобы не отвлекать, а усиливать. 
+              Здесь нет шума ради шума. Есть точность.
+            </p>
+          </div>
+        </div>
       </section>
 
-      {/* Clubs preview */}
-      <section className="bg-aurea-cream py-24">
-        <div className="max-w-7xl mx-auto px-6 grid md:grid-cols-2 gap-12">
-          <div className="bg-white p-12">
-            <div className="text-xs tracking-widest uppercase text-aurea-gold mb-4">Центр</div>
-            <h3 className="font-display text-3xl mb-4">AUREA City</h3>
-            <p className="text-aurea-charcoal/80 mb-6 leading-relaxed">
-              Компактный и энергичный клуб в самом сердце города. Идеален для тех, кто ценит время и интенсивность. 
-              Полный набор зон силы, студии и персональные тренировки.
-            </p>
-            <Link href="/clubs" className="text-sm tracking-widest uppercase border-b border-aurea-gold pb-1">
-              Подробнее
-            </Link>
+      {/* Clubs */}
+      <section id="clubs" className="py-24 bg-neutral-50">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+          <div className="section-title">Локации</div>
+          <h2 className="font-display text-4xl md:text-5xl mb-16">Два клуба</h2>
+
+          <div className="grid md:grid-cols-2 gap-8">
+            <div className="group">
+              <div className="aspect-[16/10] bg-neutral-200 overflow-hidden mb-6">
+                <img src="/gym.jpg" alt="AUREA City" className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+              </div>
+              <h3 className="font-display text-2xl mb-2">AUREA City</h3>
+              <p className="text-neutral-600 text-sm leading-relaxed">
+                Компактный и энергичный клуб в центре. Полный набор зон силы, студии и персональные тренировки. Для тех, кто ценит время.
+              </p>
+            </div>
+            <div className="group">
+              <div className="aspect-[16/10] bg-neutral-200 overflow-hidden mb-6">
+                <img src="/spa.jpg" alt="AUREA Park" className="w-full h-full object-cover group-hover:scale-105 transition duration-700" />
+              </div>
+              <h3 className="font-display text-2xl mb-2">AUREA Park</h3>
+              <p className="text-neutral-600 text-sm leading-relaxed">
+                Просторный клуб с бассейном, спа и recovery-зоной. Здесь можно провести целый день: тренировка, плавание, восстановление.
+              </p>
+            </div>
           </div>
-          <div className="bg-white p-12">
-            <div className="text-xs tracking-widest uppercase text-aurea-gold mb-4">Спа-зона</div>
-            <h3 className="font-display text-3xl mb-4">AUREA Park</h3>
-            <p className="text-aurea-charcoal/80 mb-6 leading-relaxed">
-              Просторный клуб с бассейном, спа и recovery-зоной. Здесь можно провести целый день: 
-              тренировка, плавание, восстановление и lounge.
-            </p>
-            <Link href="/clubs" className="text-sm tracking-widest uppercase border-b border-aurea-gold pb-1">
-              Подробнее
-            </Link>
+        </div>
+      </section>
+
+      {/* Membership */}
+      <section id="membership" className="py-32 px-6 md:px-10 max-w-[1400px] mx-auto">
+        <div className="section-title">Членство</div>
+        <h2 className="font-display text-4xl md:text-5xl mb-6">Один формат.<br />Разный доступ.</h2>
+        <p className="max-w-xl text-neutral-600 mb-16">
+          Все уровни включают доступ к зонам силы, Signature Classes и комьюнити. Разница — в пространстве и уровне сервиса.
+        </p>
+
+        <div className="grid md:grid-cols-3 gap-6">
+          {[
+            { name: "City", price: "12 000 ₽", items: ["AUREA City", "Групповые тренировки", "Базовый recovery"] },
+            { name: "Park", price: "18 000 ₽", items: ["AUREA Park", "Бассейн и спа", "Групповые + бонусы"] },
+            { name: "AUREA", price: "24 000 ₽", items: ["Оба клуба", "Приоритетная запись", "Персональный менеджер"] },
+          ].map((t) => (
+            <div key={t.name} className="border border-neutral-200 p-8 hover:border-black transition duration-300">
+              <div className="text-xs tracking-widest uppercase text-neutral-500 mb-4">{t.name}</div>
+              <div className="font-display text-4xl mb-1">{t.price}</div>
+              <div className="text-xs text-neutral-400 mb-8">в месяц</div>
+              <ul className="space-y-3 text-sm mb-10">
+                {t.items.map((i) => <li key={i}>• {i}</li>)}
+              </ul>
+              <button className="btn-dark w-full text-center">Заявка</button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Training */}
+      <section id="training" className="py-24 bg-neutral-50">
+        <div className="max-w-[1400px] mx-auto px-6 md:px-10">
+          <div className="section-title">Программы</div>
+          <h2 className="font-display text-4xl md:text-5xl mb-16">Signature Classes</h2>
+          <div className="grid md:grid-cols-3 gap-8">
+            <div>
+              <img src="/studio.jpg" alt="Studio" className="aspect-[4/3] object-cover mb-6" />
+              <h3 className="font-display text-xl mb-2">Студии</h3>
+              <p className="text-sm text-neutral-600">Йога, пилатес, функциональный тренинг. Небольшие группы, сильные тренеры.</p>
+            </div>
+            <div>
+              <img src="/gym.jpg" alt="Strength" className="aspect-[4/3] object-cover mb-6" />
+              <h3 className="font-display text-xl mb-2">Зоны силы</h3>
+              <p className="text-sm text-neutral-600">Премиальное оборудование и пространство, которое не мешает.</p>
+            </div>
+            <div>
+              <img src="/spa.jpg" alt="Recovery" className="aspect-[4/3] object-cover mb-6" />
+              <h3 className="font-display text-xl mb-2">Восстановление</h3>
+              <p className="text-sm text-neutral-600">Бассейн, спа, steam, recovery. Полный цикл в одном клубе.</p>
+            </div>
           </div>
         </div>
       </section>
 
       {/* CTA */}
-      <section className="max-w-3xl mx-auto px-6 py-32 text-center">
+      <section id="contact" className="py-32 px-6 text-center">
         <h2 className="font-display text-4xl md:text-5xl mb-6">Готовы войти</h2>
-        <p className="text-lg text-aurea-charcoal/80 mb-10">
-          Членство в AUREA — это доступ к обоим клубам, персональному подходу и пространству, которое работает на вас.
-        </p>
-        <Link
-          href="/contact"
-          className="inline-block bg-aurea-dark text-white px-12 py-4 text-sm tracking-widest uppercase hover:bg-aurea-gold hover:text-aurea-dark transition duration-300"
-        >
-          Записаться на тур
-        </Link>
+        <p className="text-neutral-600 mb-10 max-w-md mx-auto">Запишитесь на тур и посмотрите оба клуба.</p>
+        <Link href="#contact" className="btn-dark">Записаться</Link>
       </section>
     </>
   );
