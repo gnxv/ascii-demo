@@ -13,10 +13,10 @@ function Reveal({ children, className = "", delay = 0 }: { children: React.React
       ([entry]) => {
         if (entry.isIntersecting) {
           el.classList.add("opacity-100", "translate-y-0");
-          el.classList.remove("opacity-0", "translate-y-12");
+          el.classList.remove("opacity-0", "translate-y-16");
         }
       },
-      { threshold: 0.12 }
+      { threshold: 0.1 }
     );
 
     observer.observe(el);
@@ -26,10 +26,37 @@ function Reveal({ children, className = "", delay = 0 }: { children: React.React
   return (
     <div
       ref={ref}
-      className={`opacity-0 translate-y-12 transition-all duration-1000 ease-out ${className}`}
+      className={`opacity-0 translate-y-16 transition-all duration-1000 ease-out ${className}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
+    </div>
+  );
+}
+
+function TextClip({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add("clip-reveal");
+        }
+      },
+      { threshold: 0.4 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div ref={ref} className={`overflow-hidden ${className}`}>
+      <div className="translate-y-full transition-transform duration-1000 ease-out">{children}</div>
     </div>
   );
 }
@@ -45,10 +72,10 @@ function Card({ card, index }: { card: any; index: number }) {
       ([entry]) => {
         if (entry.isIntersecting) {
           el.classList.add("opacity-100", "translate-y-0");
-          el.classList.remove("opacity-0", "translate-y-6");
+          el.classList.remove("opacity-0", "translate-y-8");
         }
       },
-      { threshold: 0.25 }
+      { threshold: 0.2 }
     );
 
     observer.observe(el);
@@ -87,8 +114,8 @@ function Card({ card, index }: { card: any; index: number }) {
       <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10">
         <p
           ref={textRef}
-          className="text-sm text-white/90 max-w-sm opacity-0 translate-y-6 transition-all duration-700 ease-out"
-          style={{ transitionDelay: `${index * 100}ms` }}
+          className="text-sm text-white/90 max-w-sm opacity-0 translate-y-8 transition-all duration-700 ease-out"
+          style={{ transitionDelay: `${index * 120}ms` }}
         >
           {card.desc}
         </p>
@@ -98,6 +125,23 @@ function Card({ card, index }: { card: any; index: number }) {
 }
 
 export default function Home() {
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const onScroll = () => {
+      const scrollY = window.scrollY;
+      const max = document.body.scrollHeight - window.innerHeight;
+      const progress = Math.min(scrollY / Math.max(max, 1), 1);
+      root.style.setProperty("--scroll-progress", String(progress));
+      root.style.setProperty("--parallax-1", `${scrollY * 0.15}px`);
+      root.style.setProperty("--parallax-2", `${scrollY * 0.08}px`);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    onScroll();
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const cards = [
     {
       video: "/card1.mp4",
@@ -126,26 +170,32 @@ export default function Home() {
   ];
 
   return (
-    <main>
-      {/* Hero */}
-      <section className="relative min-h-screen overflow-hidden">
+    <main ref={mainRef} className="relative">
+      {/* Hero with sticky text */}
+      <section className="relative min-h-[140vh] overflow-hidden">
         <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover">
           <source src="/hero.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-black/40" />
-        <div className="relative z-10 min-h-screen flex flex-col justify-end pb-16 md:pb-24 px-4 md:px-6">
-          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white max-w-4xl leading-[0.92]">
-            Высокая<br />производительность
-          </h1>
+        <div className="absolute inset-0 bg-black/45" />
+        <div className="sticky top-0 h-screen flex flex-col justify-end pb-16 md:pb-24 px-4 md:px-6">
+          <TextClip>
+            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white max-w-4xl leading-[0.92]">
+              Высокая<br />производительность
+            </h1>
+          </TextClip>
           <p className="mt-6 text-white/75 text-base md:text-lg max-w-md">
             Пространство, где тренировка и восстановление работают как одна система.
           </p>
         </div>
       </section>
 
-      {/* Studio */}
-      <section id="studio" className="relative py-28 md:py-40 section-pad">
-        <div className="max-w-[1400px] mx-auto">
+      {/* Studio with parallax */}
+      <section id="studio" className="relative py-32 md:py-40 section-pad bg-[#fff9f5]">
+        <div
+          className="absolute inset-0 opacity-40 pointer-events-none"
+          style={{ transform: "translateY(var(--parallax-2))" }}
+        />
+        <div className="max-w-[1400px] mx-auto relative">
           <Reveal>
             <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-5">Студия</div>
             <h2 className="font-display text-4xl md:text-6xl max-w-3xl leading-tight">
@@ -161,15 +211,20 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Featured */}
-      <section className="relative bg-[#201d1c] text-[#fff9f5] py-32 section-pad overflow-hidden">
+      {/* Dark featured */}
+      <section
+        className="relative py-32 section-pad text-[#fff9f5]"
+        style={{
+          background: "linear-gradient(to bottom, #201d1c 0%, #1a1716 100%)",
+        }}
+      >
         <div className="max-w-[1400px] mx-auto">
-          <Reveal>
-            <div className="text-xs tracking-[0.3em] uppercase opacity-50 mb-6">Избранное</div>
-            <h2 className="font-display text-4xl md:text-5xl mb-16 max-w-2xl">
+          <div className="sticky top-24 mb-16">
+            <div className="text-xs tracking-[0.3em] uppercase opacity-50 mb-4">Избранное</div>
+            <h2 className="font-display text-4xl md:text-5xl max-w-2xl">
               Пространства, которые остаются с тобой.
             </h2>
-          </Reveal>
+          </div>
           <div className="grid md:grid-cols-2 gap-8">
             <Reveal delay={100}>
               <img src="/gym.jpg" alt="AUREA Сити" className="w-full aspect-[4/3] object-cover" />
@@ -188,7 +243,7 @@ export default function Home() {
       </section>
 
       {/* Awards */}
-      <section id="awards" className="py-28 section-pad">
+      <section id="awards" className="py-28 section-pad bg-[#fff9f5]">
         <div className="max-w-[1400px] mx-auto">
           <Reveal>
             <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-5">Награды</div>
@@ -200,7 +255,7 @@ export default function Home() {
               { year: "2023", title: "Design Award", desc: "Краснодар. За целостность пространства." },
               { year: "2022", title: "Community Choice", desc: "Голосование членов. За атмосферу." },
             ].map((item, i) => (
-              <Reveal key={item.title} delay={i * 100}>
+              <Reveal key={item.title} delay={i * 120}>
                 <div className="border border-[#3b322d]/10 p-7 h-full">
                   <div className="text-xs tracking-widest uppercase text-[#a99584]">{item.year}</div>
                   <h3 className="text-xl mt-3">{item.title}</h3>
@@ -213,7 +268,7 @@ export default function Home() {
       </section>
 
       {/* Zones */}
-      <section id="zones" className="py-16 section-pad bg-[#fff9f5]">
+      <section id="zones" className="py-16 section-pad">
         <div className="max-w-[1400px] mx-auto">
           <Reveal>
             <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-5">Зоны</div>
@@ -228,7 +283,7 @@ export default function Home() {
       </section>
 
       {/* Membership */}
-      <section id="membership" className="py-28 section-pad">
+      <section id="membership" className="py-28 section-pad bg-neutral-50">
         <div className="max-w-[1400px] mx-auto">
           <Reveal>
             <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-5">Членство</div>
