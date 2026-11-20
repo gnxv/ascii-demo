@@ -9,16 +9,15 @@ module.exports = {
     extend: {
       colors: {
         aurea: {
-          gold: "#C9A96E",
-          dark: "#1A1A1A",
-          charcoal: "#2C2C2C",
-          light: "#F7F5F2",
-          cream: "#EDE8E1",
+          bg: "#fff9f5",
+          text: "#3b322d",
+          muted: "#a99584",
+          dark: "#201d1c",
         },
       },
       fontFamily: {
-        sans: ["var(--font-manrope)", "system-ui", "sans-serif"],
-        display: ["var(--font-playfair)", "serif"],
+        sans: ["var(--font-inter)", "system-ui", "sans-serif"],
+        display: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
     },
   },

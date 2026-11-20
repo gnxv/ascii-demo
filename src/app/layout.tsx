@@ -1,24 +1,18 @@
 import type { Metadata } from "next";
-import { Manrope, Playfair_Display } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
 import Footer from "@/components/Footer";
 
-const manrope = Manrope({
+const inter = Inter({
   subsets: ["latin", "cyrillic"],
-  variable: "--font-manrope",
-  display: "swap",
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin", "cyrillic"],
-  variable: "--font-playfair",
+  variable: "--font-inter",
   display: "swap",
 });
 
 export const metadata: Metadata = {
   title: "AUREA — Премиальный фитнес-клуб",
-  description: "Два клуба класса премиум и де люкс в Краснодаре. Пространство для силы, восстановления и эстетики.",
+  description: "Bespoke architectural fitness spaces. Premium clubs in Krasnodar for strength, recovery and aesthetic precision.",
 };
 
 export default function RootLayout({
@@ -27,8 +21,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="ru" className={`${manrope.variable} ${playfair.variable}`}>
-      <body className="font-sans">
+    <html lang="ru" className={`${inter.variable}`}>
+      <body className="font-sans bg-[#fff9f5] text-[#3b322d]">
         <Header />
         <main>{children}</main>
         <Footer />

@@ -5,59 +5,44 @@
 :root {
   --bg: #fff9f5;
   --text: #3b322d;
-  --muted: #a99584;
-  --dark: #201d1c;
-  --scroll-progress: 0;
-  --parallax-1: 0px;
-  --parallax-2: 0px;
 }
 
 html {
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
 }
 
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  font-size: 15px;
-  line-height: 1.5;
+  font-family: var(--font-inter), system-ui, sans-serif;
+  overflow-x: hidden;
 }
 
-.font-display {
-  font-family: system-ui, -apple-system, sans-serif;
-  font-weight: 600;
-  letter-spacing: -0.03em;
-  line-height: 0.92;
-}
-
-.btn-outline {
+/* Smooth button styles matching kinetics */
+.btn-kinetics {
   display: inline-block;
   border: 1px solid currentColor;
-  padding: 0.75rem 1.75rem;
+  padding: 0.75rem 2rem;
   font-size: 13px;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
-  transition: all 0.3s ease;
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
-.btn-outline:hover {
+.btn-kinetics:hover {
   background: var(--text);
   color: var(--bg);
 }
 
-.section-pad {
-  padding-left: 1rem;
-  padding-right: 1rem;
+/* Lenis recommended styles */
+html.lenis, html.lenis body {
+  height: auto;
 }
 
-@media (min-width: 768px) {
-  .section-pad {
-    padding-left: 1.5rem;
-    padding-right: 1.5rem;
-  }
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
 }
 
-.clip-reveal > div {
-  transform: translateY(0);
+.lenis.lenis-smooth [data-lenis-prevent] {
+  overscroll-behavior: contain;
 }
