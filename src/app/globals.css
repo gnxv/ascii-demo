@@ -14,19 +14,27 @@ html {
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: var(--font-inter), system-ui, sans-serif;
+  font-family: var(--font-inter), "articulat-cf", system-ui, -apple-system, sans-serif;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
-/* Smooth button styles matching kinetics */
+/* Clip reveal helper */
+.clip-reveal {
+  will-change: clip-path;
+}
+
+/* Button base matching kinetics */
 .btn-kinetics {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
   border: 1px solid currentColor;
-  padding: 0.75rem 2rem;
-  font-size: 13px;
-  letter-spacing: 0.12em;
+  padding: 0.65rem 1.75rem;
+  font-size: 12px;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  font-weight: 500;
+  transition: all 0.35s cubic-bezier(0.25, 0.46, 0.45, 0.94);
 }
 
 .btn-kinetics:hover {
@@ -34,8 +42,9 @@ body {
   color: var(--bg);
 }
 
-/* Lenis recommended styles */
-html.lenis, html.lenis body {
+/* Lenis */
+html.lenis,
+html.lenis body {
   height: auto;
 }
 

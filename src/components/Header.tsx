@@ -22,16 +22,18 @@ export default function Header() {
   useEffect(() => {
     if (!overlayRef.current || !menuRef.current) return;
 
+    const items = menuRef.current.children;
+
     if (isOpen) {
-      gsap.to(overlayRef.current, { opacity: 1, duration: 0.5, ease: "power2.out" });
+      gsap.to(overlayRef.current, { opacity: 1, duration: 0.45, ease: "power2.out" });
       gsap.fromTo(
-        menuRef.current.children,
-        { y: 40, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.6, stagger: 0.08, ease: "power3.out", delay: 0.2 }
+        items,
+        { y: 50, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.7, stagger: 0.07, ease: "power3.out", delay: 0.15 }
       );
       document.body.style.overflow = "hidden";
     } else {
-      gsap.to(overlayRef.current, { opacity: 0, duration: 0.4, ease: "power2.in" });
+      gsap.to(overlayRef.current, { opacity: 0, duration: 0.35, ease: "power2.in" });
       document.body.style.overflow = "";
     }
   }, [isOpen]);
@@ -39,13 +41,13 @@ export default function Header() {
   return (
     <>
       <header className="fixed top-0 left-0 right-0 z-50 mix-blend-difference">
-        <div className="max-w-[1600px] mx-auto px-6 h-20 flex items-center justify-between">
-          <Link href="/" className="text-2xl tracking-[0.25em] font-medium text-white">
+        <div className="max-w-[1600px] mx-auto px-5 md:px-8 h-16 md:h-20 flex items-center justify-between">
+          <Link href="/" className="text-xl md:text-2xl tracking-[0.22em] font-medium text-white">
             AUREA
           </Link>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="text-sm tracking-[0.2em] uppercase text-white border border-white/40 px-5 py-2 hover:bg-white hover:text-black transition-colors"
+            className="text-[11px] md:text-xs tracking-[0.18em] uppercase text-white border border-white/50 px-4 md:px-5 py-1.5 md:py-2 hover:bg-white hover:text-black transition-colors duration-300"
           >
             {isOpen ? "CLOSE" : "MENU"}
           </button>
@@ -54,7 +56,9 @@ export default function Header() {
 
       <div
         ref={overlayRef}
-        className={`fixed inset-0 z-40 bg-[#fff9f5] flex items-center justify-center ${isOpen ? "pointer-events-auto" : "pointer-events-none opacity-0"}`}
+        className={`fixed inset-0 z-40 bg-[#fff9f5] flex items-center justify-center ${
+          isOpen ? "pointer-events-auto" : "pointer-events-none opacity-0"
+        }`}
       >
         <nav ref={menuRef} className="text-center">
           {menuItems.map((item) => (
@@ -62,7 +66,7 @@ export default function Header() {
               key={item.label}
               href={item.href}
               onClick={() => setIsOpen(false)}
-              className="block text-5xl md:text-7xl font-medium tracking-tight py-3 hover:opacity-60 transition-opacity"
+              className="block text-4xl md:text-6xl lg:text-7xl font-medium tracking-[-0.02em] py-2 md:py-3 hover:opacity-50 transition-opacity"
             >
               {item.label}
             </Link>
