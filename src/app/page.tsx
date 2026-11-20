@@ -13,10 +13,10 @@ function Reveal({ children, className = "", delay = 0 }: { children: React.React
       ([entry]) => {
         if (entry.isIntersecting) {
           el.classList.add("opacity-100", "translate-y-0");
-          el.classList.remove("opacity-0", "translate-y-16");
+          el.classList.remove("opacity-0", "translate-y-12");
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0.15 }
     );
 
     observer.observe(el);
@@ -26,7 +26,7 @@ function Reveal({ children, className = "", delay = 0 }: { children: React.React
   return (
     <div
       ref={ref}
-      className={`opacity-0 translate-y-16 transition-all duration-1000 ease-out ${className}`}
+      className={`opacity-0 translate-y-12 transition-all duration-900 ease-out ${className}`}
       style={{ transitionDelay: `${delay}ms` }}
     >
       {children}
@@ -34,231 +34,90 @@ function Reveal({ children, className = "", delay = 0 }: { children: React.React
   );
 }
 
-function TextClip({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          el.classList.add("clip-reveal");
-        }
-      },
-      { threshold: 0.4 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div ref={ref} className={`overflow-hidden ${className}`}>
-      <div className="translate-y-full transition-transform duration-1000 ease-out">{children}</div>
-    </div>
-  );
-}
-
-function Card({ card, index }: { card: any; index: number }) {
-  const textRef = useRef<HTMLParagraphElement>(null);
-
-  useEffect(() => {
-    const el = textRef.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          el.classList.add("opacity-100", "translate-y-0");
-          el.classList.remove("opacity-0", "translate-y-8");
-        }
-      },
-      { threshold: 0.2 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, []);
-
-  return (
-    <div
-      className="group relative aspect-[4/3] overflow-hidden bg-neutral-900"
-      onMouseEnter={(e) => {
-        const video = e.currentTarget.querySelector("video");
-        if (video) video.play();
-      }}
-      onMouseLeave={(e) => {
-        const video = e.currentTarget.querySelector("video");
-        if (video) {
-          video.pause();
-          video.currentTime = 0;
-        }
-      }}
-    >
-      <video
-        muted
-        loop
-        playsInline
-        className="absolute inset-0 w-full h-full object-cover"
-        src={card.video}
-      />
-      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/10 transition-colors duration-500" />
-
-      <div className="absolute top-6 left-6 text-white z-10">
-        <div className="text-xs tracking-[0.2em] uppercase opacity-70">{card.category}</div>
-        <h3 className="text-2xl md:text-3xl font-medium mt-0.5">{card.title}</h3>
-      </div>
-
-      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8 z-10">
-        <p
-          ref={textRef}
-          className="text-sm text-white/90 max-w-sm opacity-0 translate-y-8 transition-all duration-700 ease-out"
-          style={{ transitionDelay: `${index * 120}ms` }}
-        >
-          {card.desc}
-        </p>
-      </div>
-    </div>
-  );
-}
-
 export default function Home() {
-  const mainRef = useRef<HTMLElement>(null);
-
-  useEffect(() => {
-    const root = document.documentElement;
-    const onScroll = () => {
-      const scrollY = window.scrollY;
-      const max = document.body.scrollHeight - window.innerHeight;
-      const progress = Math.min(scrollY / Math.max(max, 1), 1);
-      root.style.setProperty("--scroll-progress", String(progress));
-      root.style.setProperty("--parallax-1", `${scrollY * 0.15}px`);
-      root.style.setProperty("--parallax-2", `${scrollY * 0.08}px`);
-    };
-    window.addEventListener("scroll", onScroll, { passive: true });
-    onScroll();
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
-
-  const cards = [
-    {
-      video: "/card1.mp4",
-      title: "Сила",
-      category: "Зоны",
-      desc: "Пространство для точной работы с весом. Свобода движения и премиальное оборудование.",
-    },
-    {
-      video: "/card2.mp4",
-      title: "Восстановление",
-      category: "Спа",
-      desc: "Парная, тишина и ритуалы после нагрузки. Полный цикл в одном клубе.",
-    },
-    {
-      video: "/card3.mp4",
-      title: "Студии",
-      category: "Группы",
-      desc: "Йога, пилатес и функционал. Небольшие группы, сильные тренеры.",
-    },
-    {
-      video: "/card4.mp4",
-      title: "Бассейн",
-      category: "Вода",
-      desc: "Спокойная вода для плавания и восстановления. Часть ежедневного ритма.",
-    },
-  ];
-
   return (
-    <main ref={mainRef} className="relative">
-      {/* Hero with sticky text */}
-      <section className="relative min-h-[140vh] overflow-hidden">
+    <main>
+      {/* Hero */}
+      <section className="relative min-h-screen overflow-hidden">
         <video autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover">
           <source src="/hero.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-black/45" />
-        <div className="sticky top-0 h-screen flex flex-col justify-end pb-16 md:pb-24 px-4 md:px-6">
-          <TextClip>
-            <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white max-w-4xl leading-[0.92]">
-              Высокая<br />производительность
-            </h1>
-          </TextClip>
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative z-10 min-h-screen flex flex-col justify-end pb-16 md:pb-24 px-4 md:px-6">
+          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white max-w-4xl leading-[0.92]">
+            Высокая<br />производительность
+          </h1>
           <p className="mt-6 text-white/75 text-base md:text-lg max-w-md">
             Пространство, где тренировка и восстановление работают как одна система.
           </p>
         </div>
       </section>
 
-      {/* Studio with parallax */}
-      <section id="studio" className="relative py-32 md:py-40 section-pad bg-[#fff9f5]">
-        <div
-          className="absolute inset-0 opacity-40 pointer-events-none"
-          style={{ transform: "translateY(var(--parallax-2))" }}
-        />
-        <div className="max-w-[1400px] mx-auto relative">
+      {/* Block 1 — Studio */}
+      <section className="relative py-28 md:py-40 px-4 md:px-6 bg-[#fff9f5]">
+        <div className="max-w-[1400px] mx-auto">
           <Reveal>
-            <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-5">Студия</div>
+            <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-4">Студия</div>
             <h2 className="font-display text-4xl md:text-6xl max-w-3xl leading-tight">
-              Два клуба.<br />Одна система.
+              Мы создаём пространства, которые усиливают движение.
             </h2>
-            <p className="mt-10 max-w-xl text-[#3b322d]/80 text-lg leading-relaxed">
-              Архитектура, свет и программы продуманы так, чтобы не отвлекать, а усиливать. Интенсивность в одном, глубина восстановления в другом.
+            <p className="mt-8 max-w-xl text-[#3b322d]/80 text-lg">
+              Архитектура, свет и программы работают вместе. Интенсивность и восстановление в одном ритме.
             </p>
-            <div className="mt-12">
+            <div className="mt-10">
               <a href="#zones" className="btn-outline">Исследовать</a>
             </div>
           </Reveal>
         </div>
       </section>
 
-      {/* Dark featured */}
-      <section
-        className="relative py-32 section-pad text-[#fff9f5]"
-        style={{
-          background: "linear-gradient(to bottom, #201d1c 0%, #1a1716 100%)",
-        }}
-      >
-        <div className="max-w-[1400px] mx-auto">
-          <div className="sticky top-24 mb-16">
-            <div className="text-xs tracking-[0.3em] uppercase opacity-50 mb-4">Избранное</div>
-            <h2 className="font-display text-4xl md:text-5xl max-w-2xl">
-              Пространства, которые остаются с тобой.
-            </h2>
-          </div>
-          <div className="grid md:grid-cols-2 gap-8">
-            <Reveal delay={100}>
-              <img src="/gym.jpg" alt="AUREA Сити" className="w-full aspect-[4/3] object-cover" />
-              <div className="mt-5 text-sm uppercase tracking-widest opacity-50">Сити</div>
-              <h3 className="text-2xl mt-1">AUREA Сити</h3>
-              <p className="mt-2 opacity-75 text-sm max-w-sm">Компактный энергичный зал в центре. Сила, студии и точность.</p>
-            </Reveal>
-            <Reveal delay={200}>
-              <img src="/spa.jpg" alt="AUREA Парк" className="w-full aspect-[4/3] object-cover" />
-              <div className="mt-5 text-sm uppercase tracking-widest opacity-50">Парк</div>
-              <h3 className="text-2xl mt-1">AUREA Парк</h3>
-              <p className="mt-2 opacity-75 text-sm max-w-sm">Бассейн, спа и полное восстановление. Место, где можно остаться дольше.</p>
-            </Reveal>
-          </div>
+      {/* Block 2 — Dark section */}
+      <section className="relative bg-[#201d1c] text-[#fff9f5] py-20 md:py-28 px-4 md:px-6">
+        <div className="max-w-[1400px] mx-auto grid md:grid-cols-2 gap-10 items-center">
+          <Reveal>
+            <img src="/block2.jpg" alt="Восстановление" className="w-full aspect-[4/3] object-cover" />
+          </Reveal>
+          <Reveal delay={150}>
+            <div className="text-xs tracking-[0.3em] uppercase opacity-50 mb-3">Восстановление</div>
+            <h3 className="text-3xl md:text-4xl font-medium mb-4">Тишина после нагрузки</h3>
+            <p className="opacity-80 max-w-md">
+              Парная, свет и пространство, где тело возвращается в баланс. Полный цикл в одном клубе.
+            </p>
+            <a href="#contact" className="btn-outline mt-8 inline-block">Подробнее</a>
+          </Reveal>
         </div>
       </section>
 
-      {/* Awards */}
-      <section id="awards" className="py-28 section-pad bg-[#fff9f5]">
+      {/* Block 3 — Featured large image */}
+      <section className="relative min-h-[80vh] overflow-hidden">
+        <img src="/block3.jpg" alt="Сила" className="absolute inset-0 w-full h-full object-cover" />
+        <div className="absolute inset-0 bg-black/40" />
+        <div className="relative z-10 min-h-[80vh] flex items-end pb-16 px-4 md:px-6">
+          <Reveal>
+            <div className="text-xs tracking-[0.3em] uppercase text-white/70 mb-2">Избранное</div>
+            <h3 className="text-4xl md:text-5xl text-white font-medium">Зона силы</h3>
+            <a href="#zones" className="btn-outline mt-6 inline-block text-white border-white">Смотреть</a>
+          </Reveal>
+        </div>
+      </section>
+
+      {/* Block 4 — Awards */}
+      <section className="py-24 px-4 md:px-6 bg-[#fff9f5]">
         <div className="max-w-[1400px] mx-auto">
           <Reveal>
-            <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-5">Награды</div>
-            <h2 className="font-display text-4xl md:text-5xl mb-14">Признание</h2>
+            <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-4">Наши</div>
+            <h2 className="font-display text-4xl md:text-5xl mb-12">Награды</h2>
           </Reveal>
           <div className="grid md:grid-cols-3 gap-6">
             {[
-              { year: "2024", title: "Best Wellness Space", desc: "Южная Россия. За архитектуру recovery-зоны." },
-              { year: "2023", title: "Design Award", desc: "Краснодар. За целостность пространства." },
-              { year: "2022", title: "Community Choice", desc: "Голосование членов. За атмосферу." },
+              { year: "2024", title: "Best Wellness Space", desc: "За архитектуру зоны восстановления." },
+              { year: "2023", title: "Design Award", desc: "За целостность пространства клуба." },
+              { year: "2022", title: "Community Choice", desc: "Выбор членов клуба." },
             ].map((item, i) => (
-              <Reveal key={item.title} delay={i * 120}>
-                <div className="border border-[#3b322d]/10 p-7 h-full">
+              <Reveal key={item.title} delay={i * 100}>
+                <div className="border border-[#3b322d]/10 p-6">
                   <div className="text-xs tracking-widest uppercase text-[#a99584]">{item.year}</div>
-                  <h3 className="text-xl mt-3">{item.title}</h3>
+                  <h3 className="text-xl mt-2">{item.title}</h3>
                   <p className="mt-2 text-sm opacity-70">{item.desc}</p>
                 </div>
               </Reveal>
@@ -267,56 +126,10 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Zones */}
-      <section id="zones" className="py-16 section-pad">
-        <div className="max-w-[1400px] mx-auto">
-          <Reveal>
-            <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-5">Зоны</div>
-            <h2 className="font-display text-4xl md:text-5xl mb-12">Четыре пространства</h2>
-          </Reveal>
-          <div className="grid md:grid-cols-2 gap-4">
-            {cards.map((card, i) => (
-              <Card key={card.title} card={card} index={i} />
-            ))}
-          </div>
+      <section id="zones" className="py-16 px-4 md:px-6">
+        <div className="max-w-[1400px] mx-auto text-center opacity-60">
+          <p>Далее — существующие зоны и членство</p>
         </div>
-      </section>
-
-      {/* Membership */}
-      <section id="membership" className="py-28 section-pad bg-neutral-50">
-        <div className="max-w-[1400px] mx-auto">
-          <Reveal>
-            <div className="text-xs tracking-[0.3em] uppercase text-[#a99584] mb-5">Членство</div>
-            <h2 className="font-display text-4xl md:text-5xl mb-14">Индивидуальный доступ</h2>
-          </Reveal>
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              { name: "Сити", price: "12 000 ₽", desc: "Доступ в AUREA Сити. Групповые тренировки и основные зоны." },
-              { name: "Парк", price: "18 000 ₽", desc: "AUREA Парк с бассейном, спа и расширенным восстановлением." },
-              { name: "AUREA", price: "24 000 ₽", desc: "Оба клуба. Приоритетная запись и персональная поддержка." },
-            ].map((item, i) => (
-              <Reveal key={item.name} delay={i * 100}>
-                <div className="border border-[#3b322d]/10 p-7">
-                  <div className="text-xs tracking-widest uppercase text-[#a99584]">{item.name}</div>
-                  <div className="text-3xl mt-3">{item.price}</div>
-                  <p className="mt-4 text-sm opacity-80">{item.desc}</p>
-                  <button className="btn-outline mt-8 text-xs">Заявка</button>
-                </div>
-              </Reveal>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Contact */}
-      <section id="contact" className="py-36 section-pad text-center">
-        <Reveal>
-          <h2 className="font-display text-4xl md:text-5xl">Контакты</h2>
-          <p className="mt-5 opacity-70 max-w-sm mx-auto">Запишитесь на экскурсию по обоим клубам.</p>
-          <div className="mt-10">
-            <a href="mailto:hello@aurea.club" className="btn-outline">Связаться</a>
-          </div>
-        </Reveal>
       </section>
     </main>
   );
