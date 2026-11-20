@@ -9,10 +9,10 @@ import "lenis/dist/lenis.css";
 gsap.registerPlugin(ScrollTrigger);
 
 const products = [
-  { cat: "KINETICS SERIES", title: "Cocoon Recovery", desc: "Teardrop-inspired recovery pod with breathable structure on arched frame—calm, sculptural retreat for post-training balance.", img: "/cocoon-fitness.jpg" },
-  { cat: "ABSTRACT", title: "Play Curl", desc: "Elevated, translucent curl inviting vertical exploration in a secluded-yet-visible canopy.", img: "/studio-fitness.jpg" },
-  { cat: "TREEHOUSES", title: "Tree Hideout", desc: "At Fernvale Link, a tree-trunk-base playscape hides climbs and slides in architectural form.", img: "/awards-fitness.jpg" },
-  { cat: "PLAYSPIRE", title: "Playspire Mini", desc: "Space-efficient vertical play that sparks exploration, movement and focused intensity.", img: "/gym.jpg" },
+  { cat: "KINETICS SERIES", title: "Cocoon Recovery", desc: "Teardrop-inspired recovery pod with breathable structure on arched frame—calm, sculptural retreat for post-training balance.", img: "/cocoon-fitness.jpg", video: "/cocoon-hover.mp4" },
+  { cat: "ABSTRACT", title: "Play Curl", desc: "Elevated, translucent curl inviting vertical exploration in a secluded-yet-visible canopy.", img: "/studio-fitness.jpg", video: "/studio-hover.mp4" },
+  { cat: "TREEHOUSES", title: "Tree Hideout", desc: "At Fernvale Link, a tree-trunk-base playscape hides climbs and slides in architectural form.", img: "/awards-fitness.jpg", video: "/studio-hover.mp4" },
+  { cat: "PLAYSPIRE", title: "Playspire Mini", desc: "Space-efficient vertical play that sparks exploration, movement and focused intensity.", img: "/gym.jpg", video: "/hero-hover.mp4" },
 ];
 
 const references = [
@@ -20,6 +20,38 @@ const references = [
   { cat: "HOSPITALITY", title: "The Ritz-Carlton – Maldives", img: "/spa.jpg" },
   { cat: "MIXED-USE", title: "The Exchange TRX – Malaysia", img: "/block1.jpg" },
 ];
+
+function HoverMedia({ img, video, alt, className = "" }: { img: string; video?: string; alt: string; className?: string }) {
+  const videoRef = useRef<HTMLVideoElement>(null);
+
+  const onEnter = () => {
+    if (videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+  };
+  const onLeave = () => {
+    if (videoRef.current) {
+      videoRef.current.pause();
+    }
+  };
+
+  return (
+    <div className={`relative overflow-hidden group ${className}`} onMouseEnter={onEnter} onMouseLeave={onLeave}>
+      <img src={img} alt={alt} className="w-full h-full object-cover" />
+      {video && (
+        <video
+          ref={videoRef}
+          src={video}
+          muted
+          loop
+          playsInline
+          className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
+        />
+      )}
+    </div>
+  );
+}
 
 export default function Home() {
   const mainRef = useRef<HTMLElement>(null);
@@ -84,8 +116,8 @@ export default function Home() {
       {/* Hero */}
       <section className="relative min-h-screen flex flex-col justify-end pb-16 md:pb-24 px-5 md:px-10 lg:px-16 overflow-hidden">
         <div className="absolute inset-0 parallax-el" data-speed="0.2">
-          <img src="/hero-fitness.jpg" alt="AUREA" className="w-full h-[118%] object-cover" style={{ transform: "translateY(var(--parallax-y, 0px))" }} />
-          <div className="absolute inset-0 bg-black/10" />
+          <HoverMedia img="/hero-fitness.jpg" video="/hero-hover.mp4" alt="AUREA" className="w-full h-[118%]" />
+          <div className="absolute inset-0 bg-black/10 pointer-events-none" />
         </div>
         <div className="relative z-10 max-w-5xl">
           <div className="hero-kicker text-[11px] tracking-[0.36em] uppercase mb-4 opacity-80 font-medium">
@@ -192,7 +224,7 @@ export default function Home() {
             {products.map((p) => (
               <div key={p.title} className="clip-reveal">
                 <div className="overflow-hidden parallax-el mb-5" data-speed="0.22">
-                  <img src={p.img} alt={p.title} className="w-full aspect-[4/3] object-cover" style={{ transform: "translateY(var(--parallax-y, 0px))" }} />
+                  <HoverMedia img={p.img} video={p.video} alt={p.title} className="w-full aspect-[4/3]" />
                 </div>
                 <div className="text-[11px] tracking-[0.3em] uppercase mb-2 opacity-60">{p.cat}</div>
                 <h3 className="text-2xl md:text-3xl font-medium mb-3">{p.title}</h3>
