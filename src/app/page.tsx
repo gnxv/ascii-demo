@@ -68,7 +68,7 @@ export default function Home() {
     gsap.ticker.add((time) => lenis.raf(time * 1000));
     gsap.ticker.lagSmoothing(0);
 
-    // Clip-path text reveal (stronger, more visible like data-text-scroll-reveal)
+    // Clip-path text reveal — longer, more scroll-tied
     gsap.utils.toArray(".clip-reveal").forEach((el: any) => {
       gsap.fromTo(
         el,
@@ -78,24 +78,24 @@ export default function Home() {
           ease: "power1.out",
           scrollTrigger: {
             trigger: el,
-            start: "top 95%",
-            end: "top 50%",
-            scrub: 0.8,
+            start: "top 96%",
+            end: "top 48%",
+            scrub: 1,
           },
         }
       );
     });
 
-    // Stronger parallax on images and blocks
+    // Stronger, smoother parallax
     gsap.utils.toArray(".parallax-el").forEach((el: any) => {
-      const speed = parseFloat(el.dataset.speed || "0.35");
+      const speed = parseFloat(el.dataset.speed || "0.4");
       ScrollTrigger.create({
         trigger: el,
         start: "top bottom",
         end: "bottom top",
-        scrub: 0.6,
+        scrub: 0.5,
         onUpdate: (self) => {
-          const y = (self.progress - 0.5) * speed * 180;
+          const y = (self.progress - 0.5) * speed * 200;
           el.style.setProperty("--parallax-y", `${y}px`);
         },
       });
@@ -136,7 +136,7 @@ export default function Home() {
       </section>
 
       {/* Studio */}
-      <section id="studio" className="bg-[#f1e6df] py-20 md:py-28 px-5 md:px-10 lg:px-16">
+      <section id="studio" className="bg-[#f1e6df] py-16 md:py-22 px-5 md:px-10 lg:px-16">
         <div className="max-w-[1320px] mx-auto">
           <div className="text-[11px] tracking-[0.3em] uppercase mb-4 opacity-60 clip-reveal">STUDIO</div>
           <h2 className="text-3xl md:text-[48px] leading-[1.02] tracking-[-0.02em] font-medium max-w-4xl clip-reveal">
@@ -179,7 +179,7 @@ export default function Home() {
       </section>
 
       {/* Featured */}
-      <section className="bg-[#f1e6df] py-20 md:py-28 px-5 md:px-10 lg:px-16">
+      <section className="bg-[#f1e6df] py-16 md:py-22 px-5 md:px-10 lg:px-16">
         <div className="max-w-[1400px] mx-auto">
           <div className="text-[11px] tracking-[0.3em] uppercase mb-5 opacity-60 clip-reveal">FEATURED</div>
           <div className="relative overflow-hidden h-[70vh] md:h-[80vh] parallax-el" data-speed="0.18">
@@ -194,7 +194,7 @@ export default function Home() {
       </section>
 
       {/* Awards */}
-      <section id="awards" className="bg-[#fff9f5] py-20 md:py-28 px-5 md:px-10 lg:px-16">
+      <section id="awards" className="bg-[#fff9f5] py-16 md:py-22 px-5 md:px-10 lg:px-16">
         <div className="max-w-[1320px] mx-auto grid md:grid-cols-2 gap-10 md:gap-16 items-start">
           <div>
             <div className="text-[11px] tracking-[0.3em] uppercase mb-2 opacity-60 clip-reveal">OUR</div>
@@ -214,7 +214,7 @@ export default function Home() {
       </section>
 
       {/* Products — 4 cards */}
-      <section id="products" className="bg-[#fff9f5] py-20 md:py-28 px-5 md:px-10 lg:px-16">
+      <section id="products" className="bg-[#fff9f5] py-16 md:py-22 px-5 md:px-10 lg:px-16">
         <div className="max-w-[1320px] mx-auto">
           <div className="text-[11px] tracking-[0.3em] uppercase mb-4 opacity-60 clip-reveal">PRODUCTS</div>
           <h2 className="text-3xl md:text-[48px] leading-[1.02] tracking-[-0.02em] font-medium mb-2 clip-reveal">BESPOKE PRODUCTS</h2>
@@ -260,7 +260,7 @@ export default function Home() {
       </section>
 
       {/* Connect */}
-      <section id="connect" className="bg-[#fff9f5] py-20 md:py-28 px-5 md:px-10 lg:px-16">
+      <section id="connect" className="bg-[#f1e6df] py-16 md:py-22 px-5 md:px-10 lg:px-16">
         <div className="max-w-[1320px] mx-auto grid md:grid-cols-2 gap-12 md:gap-20 items-start">
           <div>
             <h2 className="text-4xl md:text-6xl leading-[0.95] tracking-[-0.025em] font-medium mb-8 clip-reveal">
