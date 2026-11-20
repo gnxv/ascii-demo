@@ -36,32 +36,34 @@ export default function Home() {
     gsap.ticker.add((time) => lenis.raf(time * 1000));
     gsap.ticker.lagSmoothing(0);
 
+    // Clip-path text reveal (stronger, more visible like data-text-scroll-reveal)
     gsap.utils.toArray(".clip-reveal").forEach((el: any) => {
       gsap.fromTo(
         el,
         { clipPath: "inset(100% 0% 0% 0%)" },
         {
           clipPath: "inset(0% 0% 0% 0%)",
-          ease: "none",
+          ease: "power1.out",
           scrollTrigger: {
             trigger: el,
-            start: "top 92%",
-            end: "top 58%",
-            scrub: 0.5,
+            start: "top 95%",
+            end: "top 50%",
+            scrub: 0.8,
           },
         }
       );
     });
 
+    // Stronger parallax on images and blocks
     gsap.utils.toArray(".parallax-el").forEach((el: any) => {
-      const speed = parseFloat(el.dataset.speed || "0.25");
+      const speed = parseFloat(el.dataset.speed || "0.35");
       ScrollTrigger.create({
         trigger: el,
         start: "top bottom",
         end: "bottom top",
-        scrub: true,
+        scrub: 0.6,
         onUpdate: (self) => {
-          const y = (self.progress - 0.5) * speed * 140;
+          const y = (self.progress - 0.5) * speed * 180;
           el.style.setProperty("--parallax-y", `${y}px`);
         },
       });

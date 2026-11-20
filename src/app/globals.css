@@ -45,6 +45,7 @@ body {
 .btn-kinetics:hover {
   background: var(--text);
   color: var(--bg);
+  transform: translateY(-1px);
 }
 
 /* Lenis */
