@@ -1,4 +1,33 @@
+"use client";
+
 export default function Home() {
+  const cards = [
+    {
+      video: "/card1.mp4",
+      title: "Сила",
+      category: "Зоны",
+      desc: "Пространство для точной работы с весом. Свобода движения и премиальное оборудование.",
+    },
+    {
+      video: "/card2.mp4",
+      title: "Восстановление",
+      category: "Спа",
+      desc: "Парная, тишина и ритуалы после нагрузки. Полный цикл в одном клубе.",
+    },
+    {
+      video: "/card3.mp4",
+      title: "Студии",
+      category: "Группы",
+      desc: "Йога, пилатес и функционал. Небольшие группы, сильные тренеры.",
+    },
+    {
+      video: "/card4.mp4",
+      title: "Бассейн",
+      category: "Вода",
+      desc: "Спокойная вода для плавания и восстановления. Часть ежедневного ритма.",
+    },
+  ];
+
   return (
     <main>
       {/* Hero */}
@@ -12,43 +41,80 @@ export default function Home() {
         >
           <source src="/hero.mp4" type="video/mp4" />
         </video>
-        <div className="absolute inset-0 bg-black/30" />
+        <div className="absolute inset-0 bg-black/35" />
         <div className="relative z-10 min-h-screen flex flex-col justify-end pb-16 md:pb-24 px-4 md:px-6">
-          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white max-w-5xl">
-            АРХИТЕКТУРНАЯ<br />ПРОИЗВОДИТЕЛЬНОСТЬ
+          <h1 className="font-display text-5xl md:text-7xl lg:text-8xl text-white max-w-4xl leading-[0.95]">
+            Высокая<br />производительность
           </h1>
           <p className="mt-6 text-white/80 text-base md:text-lg max-w-md">
-            Пространства, где интенсивность, восстановление и точность работают вместе.
+            Пространство, где тренировка и восстановление работают как одна система.
           </p>
         </div>
       </section>
 
-      {/* Studio / Philosophy */}
+      {/* Studio */}
       <section className="py-24 md:py-32 section-pad max-w-[1400px] mx-auto">
         <div className="text-xs tracking-[0.25em] uppercase text-[#a99584] mb-4">Студия</div>
-        <h2 className="font-display text-4xl md:text-6xl max-w-3xl">
-          Мы создаём среды, которые вдохновляют на движение и ясность.
+        <h2 className="font-display text-4xl md:text-5xl max-w-3xl">
+          Два клуба. Одна система.
         </h2>
         <p className="mt-8 max-w-xl text-[#3b322d]/80">
-          Два клуба в Краснодаре работают как одна система. Архитектура, свет и материалы продуманы с той же тщательностью, что и программы.
+          Архитектура, свет и программы продуманы так, чтобы не отвлекать, а усиливать. Интенсивность в одном, глубина восстановления в другом.
         </p>
         <div className="mt-10">
           <a href="#clubs" className="btn-outline">Исследовать</a>
         </div>
       </section>
 
-      {/* Featured / Clubs */}
-      <section id="clubs" className="bg-[#201d1c] text-[#fff9f5] py-20 section-pad">
+      {/* 4 Cards with hover video */}
+      <section className="py-12 section-pad">
+        <div className="grid md:grid-cols-2 gap-4 max-w-[1400px] mx-auto">
+          {cards.map((card) => (
+            <div
+              key={card.title}
+              className="group relative aspect-[4/3] overflow-hidden bg-neutral-900"
+              onMouseEnter={(e) => {
+                const video = e.currentTarget.querySelector("video");
+                if (video) video.play();
+              }}
+              onMouseLeave={(e) => {
+                const video = e.currentTarget.querySelector("video");
+                if (video) {
+                  video.pause();
+                  video.currentTime = 0;
+                }
+              }}
+            >
+              <video
+                muted
+                loop
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+                src={card.video}
+              />
+              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-500" />
+              <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end text-white">
+                <div className="text-xs tracking-[0.2em] uppercase opacity-70 mb-1">{card.category}</div>
+                <h3 className="text-2xl md:text-3xl font-medium">{card.title}</h3>
+                <p className="mt-2 text-sm opacity-80 max-w-sm">{card.desc}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Clubs */}
+      <section id="clubs" className="bg-[#201d1c] text-[#fff9f5] py-20 section-pad mt-12">
         <div className="text-xs tracking-[0.25em] uppercase opacity-60 mb-6">Избранное</div>
-        <div className="grid md:grid-cols-2 gap-6">
+        <div className="grid md:grid-cols-2 gap-6 max-w-[1400px] mx-auto">
           <div>
-            <img src="/gym.jpg" alt="AUREA City" className="w-full aspect-[4/3] object-cover" />
+            <img src="/gym.jpg" alt="AUREA Сити" className="w-full aspect-[4/3] object-cover" />
             <div className="mt-4 text-sm uppercase tracking-widest opacity-60">Сити</div>
             <h3 className="text-2xl mt-1">AUREA Сити</h3>
             <p className="mt-2 opacity-80 text-sm max-w-sm">Компактный энергичный зал в центре. Сила, студии и точность.</p>
           </div>
           <div>
-            <img src="/spa.jpg" alt="AUREA Park" className="w-full aspect-[4/3] object-cover" />
+            <img src="/spa.jpg" alt="AUREA Парк" className="w-full aspect-[4/3] object-cover" />
             <div className="mt-4 text-sm uppercase tracking-widest opacity-60">Парк</div>
             <h3 className="text-2xl mt-1">AUREA Парк</h3>
             <p className="mt-2 opacity-80 text-sm max-w-sm">Бассейн, спа и полное восстановление. Место, где можно остаться дольше.</p>
@@ -60,7 +126,7 @@ export default function Home() {
       <section id="membership" className="py-24 section-pad">
         <div className="text-xs tracking-[0.25em] uppercase text-[#a99584] mb-4">Членство</div>
         <h2 className="font-display text-4xl md:text-5xl mb-12">Индивидуальный доступ</h2>
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-6 max-w-[1400px] mx-auto">
           {[
             { name: "Сити", price: "12 000 ₽", desc: "Доступ в AUREA Сити. Групповые тренировки и основные зоны." },
             { name: "Парк", price: "18 000 ₽", desc: "AUREA Парк с бассейном, спа и расширенным восстановлением." },
@@ -73,28 +139,6 @@ export default function Home() {
               <button className="btn-outline mt-8 text-xs">Заявка</button>
             </div>
           ))}
-        </div>
-      </section>
-
-      {/* Training */}
-      <section id="training" className="py-20 section-pad bg-[#fff9f5]">
-        <div className="text-xs tracking-[0.25em] uppercase text-[#a99584] mb-6">Программы</div>
-        <div className="grid md:grid-cols-3 gap-6">
-          <div>
-            <img src="/studio.jpg" alt="Студии" className="w-full aspect-[3/2] object-cover" />
-            <h3 className="mt-4 text-xl">Студии</h3>
-            <p className="mt-1 text-sm opacity-70">Йога, пилатес и функциональные форматы в небольших группах.</p>
-          </div>
-          <div>
-            <img src="/gym.jpg" alt="Сила" className="w-full aspect-[3/2] object-cover" />
-            <h3 className="mt-4 text-xl">Зоны силы</h3>
-            <p className="mt-1 text-sm opacity-70">Премиальное оборудование и свободное пространство.</p>
-          </div>
-          <div>
-            <img src="/spa.jpg" alt="Восстановление" className="w-full aspect-[3/2] object-cover" />
-            <h3 className="mt-4 text-xl">Восстановление</h3>
-            <p className="mt-1 text-sm opacity-70">Бассейн, парная и специальные протоколы восстановления.</p>
-          </div>
         </div>
       </section>
 
