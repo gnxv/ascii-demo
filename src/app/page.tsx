@@ -101,9 +101,28 @@ export default function Home() {
       });
     });
 
-    gsap.from(".hero-kicker", { y: 20, opacity: 0, duration: 0.9, ease: "power3.out", delay: 0.1 });
-    gsap.from(".hero-title", { y: 48, opacity: 0, duration: 1.1, ease: "power3.out", delay: 0.3 });
-    gsap.from(".hero-desc", { y: 28, opacity: 0, duration: 0.9, ease: "power3.out", delay: 0.55 });
+    // Staggered hero text entrance
+    const heroTl = gsap.timeline({ delay: 0.2 });
+    heroTl
+      .from(".hero-kicker", { y: 30, opacity: 0, duration: 1, ease: "power3.out" })
+      .from(".hero-title", { y: 60, opacity: 0, duration: 1.2, ease: "power3.out" }, "-=0.6")
+      .from(".hero-desc", { y: 40, opacity: 0, duration: 1, ease: "power3.out" }, "-=0.7");
+
+    // Section entrance with slight scale + y for more presence
+    gsap.utils.toArray("section").forEach((sec: any, i) => {
+      if (i === 0) return; // skip hero
+      gsap.from(sec, {
+        y: 40,
+        opacity: 0.85,
+        duration: 1.1,
+        ease: "power2.out",
+        scrollTrigger: {
+          trigger: sec,
+          start: "top 88%",
+          toggleActions: "play none none reverse",
+        },
+      });
+    });
 
     return () => {
       lenis.destroy();
@@ -116,7 +135,16 @@ export default function Home() {
       {/* Hero */}
       <section className="relative min-h-screen flex flex-col justify-end pb-16 md:pb-24 px-5 md:px-10 lg:px-16 overflow-hidden">
         <div className="absolute inset-0 parallax-el" data-speed="0.2">
-          <HoverMedia img="/hero-fitness.jpg" video="/hero-hover.mp4" alt="AUREA" className="w-full h-[118%]" />
+          <video
+            src="/hero-hover.mp4"
+            autoPlay
+            muted
+            loop
+            playsInline
+            poster="/hero-fitness.jpg"
+            className="w-full h-[118%] object-cover"
+            style={{ transform: "translateY(var(--parallax-y, 0px))" }}
+          />
           <div className="absolute inset-0 bg-black/10 pointer-events-none" />
         </div>
         <div className="relative z-10 max-w-5xl">
