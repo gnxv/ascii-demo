@@ -1,5 +1,72 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+
+function Card({ card, index }: { card: any; index: number }) {
+  const textRef = useRef<HTMLParagraphElement>(null);
+
+  useEffect(() => {
+    const el = textRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          el.classList.add("opacity-100", "translate-y-0");
+          el.classList.remove("opacity-0", "translate-y-4");
+        }
+      },
+      { threshold: 0.3 }
+    );
+
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
+  return (
+    <div
+      className="group relative aspect-[4/3] overflow-hidden bg-neutral-900"
+      onMouseEnter={(e) => {
+        const video = e.currentTarget.querySelector("video");
+        if (video) video.play();
+      }}
+      onMouseLeave={(e) => {
+        const video = e.currentTarget.querySelector("video");
+        if (video) {
+          video.pause();
+          video.currentTime = 0;
+        }
+      }}
+    >
+      <video
+        muted
+        loop
+        playsInline
+        className="absolute inset-0 w-full h-full object-cover"
+        src={card.video}
+      />
+      <div className="absolute inset-0 bg-black/30 group-hover:bg-black/15 transition-colors duration-500" />
+
+      {/* Title top-left */}
+      <div className="absolute top-6 left-6 text-white">
+        <div className="text-xs tracking-[0.2em] uppercase opacity-70">{card.category}</div>
+        <h3 className="text-2xl md:text-3xl font-medium mt-0.5">{card.title}</h3>
+      </div>
+
+      {/* Animated description bottom */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 md:p-8">
+        <p
+          ref={textRef}
+          className="text-sm text-white/90 max-w-sm opacity-0 translate-y-4 transition-all duration-700 ease-out"
+          style={{ transitionDelay: `${index * 100}ms` }}
+        >
+          {card.desc}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function Home() {
   const cards = [
     {
@@ -66,39 +133,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* 4 Cards with hover video */}
+      {/* 4 Cards */}
       <section className="py-12 section-pad">
         <div className="grid md:grid-cols-2 gap-4 max-w-[1400px] mx-auto">
-          {cards.map((card) => (
-            <div
-              key={card.title}
-              className="group relative aspect-[4/3] overflow-hidden bg-neutral-900"
-              onMouseEnter={(e) => {
-                const video = e.currentTarget.querySelector("video");
-                if (video) video.play();
-              }}
-              onMouseLeave={(e) => {
-                const video = e.currentTarget.querySelector("video");
-                if (video) {
-                  video.pause();
-                  video.currentTime = 0;
-                }
-              }}
-            >
-              <video
-                muted
-                loop
-                playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-                src={card.video}
-              />
-              <div className="absolute inset-0 bg-black/30 group-hover:bg-black/20 transition-colors duration-500" />
-              <div className="absolute inset-0 p-6 md:p-8 flex flex-col justify-end text-white">
-                <div className="text-xs tracking-[0.2em] uppercase opacity-70 mb-1">{card.category}</div>
-                <h3 className="text-2xl md:text-3xl font-medium">{card.title}</h3>
-                <p className="mt-2 text-sm opacity-80 max-w-sm">{card.desc}</p>
-              </div>
-            </div>
+          {cards.map((card, i) => (
+            <Card key={card.title} card={card} index={i} />
           ))}
         </div>
       </section>

@@ -8,7 +8,7 @@ export default function Header() {
           AUREA
         </Link>
 
-        <nav className="hidden md:flex items-center gap-8 bg-black/40 backdrop-blur-md px-6 py-2.5 rounded-full text-sm font-medium tracking-widest uppercase text-white">
+        <nav className="hidden md:flex items-center gap-8 bg-white/10 backdrop-blur-md border border-white/20 px-5 py-2 rounded-sm text-sm font-medium tracking-widest uppercase text-white">
           <Link href="#clubs" className="hover:opacity-70 transition">Клубы</Link>
           <Link href="#membership" className="hover:opacity-70 transition">Членство</Link>
           <Link href="#training" className="hover:opacity-70 transition">Тренировки</Link>
@@ -16,7 +16,7 @@ export default function Header() {
           <Link href="#contact" className="hover:opacity-70 transition">Контакты</Link>
         </nav>
 
-        <nav className="md:hidden flex items-center gap-3 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full text-xs font-medium tracking-widest uppercase text-white">
+        <nav className="md:hidden flex items-center gap-3 bg-white/10 backdrop-blur-md border border-white/20 px-4 py-2 rounded-sm text-xs font-medium tracking-widest uppercase text-white">
           <Link href="#clubs">Клубы</Link>
           <Link href="#membership">Членство</Link>
           <Link href="#contact">Контакты</Link>
