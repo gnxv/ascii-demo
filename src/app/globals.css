@@ -3,8 +3,10 @@
 @tailwind utilities;
 
 :root {
-  --font-manrope: "Manrope", system-ui, sans-serif;
-  --font-playfair: "Playfair Display", serif;
+  --bg: #fff9f5;
+  --text: #3b322d;
+  --muted: #a99584;
+  --dark: #201d1c;
 }
 
 html {
@@ -12,49 +14,43 @@ html {
 }
 
 body {
-  @apply bg-white text-neutral-900 antialiased;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
 }
 
-.hero {
-  position: relative;
-  min-height: 100vh;
-  display: flex;
-  align-items: flex-end;
-  overflow: hidden;
+.font-display {
+  font-family: system-ui, -apple-system, sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.03em;
+  line-height: 0.92;
 }
 
-.hero video,
-.hero img {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  z-index: 0;
+.btn-outline {
+  display: inline-block;
+  border: 1px solid currentColor;
+  padding: 0.75rem 1.75rem;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  transition: all 0.3s ease;
 }
 
-.hero-overlay {
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.15) 50%, rgba(0,0,0,0.05) 100%);
-  z-index: 1;
+.btn-outline:hover {
+  background: var(--text);
+  color: var(--bg);
 }
 
-.hero-content {
-  position: relative;
-  z-index: 2;
-  width: 100%;
-  padding: 0 5vw 8vh;
+.section-pad {
+  padding-left: 1rem;
+  padding-right: 1rem;
 }
 
-.btn-primary {
-  @apply inline-block border border-white/70 text-white px-8 py-3 text-xs tracking-[0.2em] uppercase hover:bg-white hover:text-black transition-all duration-300;
-}
-
-.btn-dark {
-  @apply inline-block border border-black px-8 py-3 text-xs tracking-[0.2em] uppercase hover:bg-black hover:text-white transition-all duration-300;
-}
-
-.section-title {
-  @apply text-xs tracking-[0.3em] uppercase text-neutral-500 mb-4;
+@media (min-width: 768px) {
+  .section-pad {
+    padding-left: 1.5rem;
+    padding-right: 1.5rem;
+  }
 }
