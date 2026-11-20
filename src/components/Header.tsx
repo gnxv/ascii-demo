@@ -25,15 +25,15 @@ export default function Header() {
     const items = menuRef.current.children;
 
     if (isOpen) {
-      gsap.to(overlayRef.current, { opacity: 1, duration: 0.45, ease: "power2.out" });
+      gsap.to(overlayRef.current, { opacity: 1, duration: 0.4, ease: "power2.out" });
       gsap.fromTo(
         items,
-        { y: 50, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.7, stagger: 0.07, ease: "power3.out", delay: 0.15 }
+        { y: 40, opacity: 0 },
+        { y: 0, opacity: 1, duration: 0.65, stagger: 0.06, ease: "power3.out", delay: 0.12 }
       );
       document.body.style.overflow = "hidden";
     } else {
-      gsap.to(overlayRef.current, { opacity: 0, duration: 0.35, ease: "power2.in" });
+      gsap.to(overlayRef.current, { opacity: 0, duration: 0.3, ease: "power2.in" });
       document.body.style.overflow = "";
     }
   }, [isOpen]);
@@ -42,12 +42,12 @@ export default function Header() {
     <>
       <header className="fixed top-0 left-0 right-0 z-50 mix-blend-difference">
         <div className="max-w-[1600px] mx-auto px-5 md:px-8 h-16 md:h-20 flex items-center justify-between">
-          <Link href="/" className="text-xl md:text-2xl tracking-[0.22em] font-medium text-white">
+          <Link href="/" className="text-xl md:text-2xl tracking-[0.2em] font-medium text-white">
             AUREA
           </Link>
           <button
             onClick={() => setIsOpen(!isOpen)}
-            className="text-[11px] md:text-xs tracking-[0.18em] uppercase text-white border border-white/50 px-4 md:px-5 py-1.5 md:py-2 hover:bg-white hover:text-black transition-colors duration-300"
+            className="h-12 min-w-[10em] text-[11px] tracking-[0.16em] uppercase text-white border border-white/40 bg-[#f1e6df]/10 backdrop-blur-sm px-5 hover:bg-[#f1e6df] hover:text-[#3b322d] transition-all duration-300"
           >
             {isOpen ? "CLOSE" : "MENU"}
           </button>
@@ -66,7 +66,7 @@ export default function Header() {
               key={item.label}
               href={item.href}
               onClick={() => setIsOpen(false)}
-              className="block text-4xl md:text-6xl lg:text-7xl font-medium tracking-[-0.02em] py-2 md:py-3 hover:opacity-50 transition-opacity"
+              className="block text-4xl md:text-6xl lg:text-7xl font-medium tracking-[-0.02em] py-2 md:py-2.5 hover:opacity-50 transition-opacity"
             >
               {item.label}
             </Link>
