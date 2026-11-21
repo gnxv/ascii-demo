@@ -1,5 +1,6 @@
 "use client";
 
+import ThreeFishes from "@/components/ThreeFishes";
 import ThreeJellyfish from "@/components/ThreeJellyfish";
 
 import { useEffect, useRef } from "react";
