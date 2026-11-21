@@ -2,6 +2,7 @@
 
 import AsciiJellyfish from "@/components/AsciiJellyfish";
 import AsciiFrogs from "@/components/AsciiFrogs";
+import PocketFrogs from "@/components/PocketFrogs";
 
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
@@ -319,6 +320,7 @@ export default function Home() {
     { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
     { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
     { title: "Reactive Grid", component: <Grid />, bg: "bg-black" },
+    { title: "Pocket Frogs", component: <PocketFrogs />, bg: "bg-green-950" },
   ];
 
   return (

@@ -58,7 +58,7 @@ export default function AsciiJellyfish() {
 
         // bell rings
         for (let r = 0; r < jelly.rings; r++) {
-          const rad = (33 + r * 10.5) * pulse;
+          const rad = (49.5 + r * 15.75) * pulse;
           const alpha = 0.5 + Math.sin(t * 2 + r) * 0.2;
           ctx.fillStyle = `rgba(186,130,255,${alpha})`;
           for (let p = 0; p < jelly.pts; p++) {
