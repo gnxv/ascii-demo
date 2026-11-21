@@ -329,7 +329,7 @@ export default function Home() {
     <main className="bg-black text-white">
       <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center mix-blend-difference">
         <div className="text-sm tracking-[0.3em] uppercase">ASCII DEMO</div>
-        <div className="text-xs opacity-60">6 scenes · code-drawn</div>
+
       </header>
 
       {scenes.map((s, i) => (

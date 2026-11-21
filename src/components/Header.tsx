@@ -42,9 +42,7 @@ export default function Header() {
     <>
       <header className="fixed top-0 left-0 right-0 z-50 mix-blend-difference">
         <div className="max-w-[1600px] mx-auto px-5 md:px-8 h-16 md:h-20 flex items-center justify-between">
-          <Link href="/" className="text-xl md:text-2xl tracking-[0.2em] font-medium text-white">
-            AUREA
-          </Link>
+          <div />
           <button
             onClick={() => setIsOpen(!isOpen)}
             className="btn-kinetics font-mono text-white border-white/50 hover:bg-[#f1e6df] hover:text-[#3b322d]"
