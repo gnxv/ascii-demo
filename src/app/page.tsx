@@ -3,7 +3,6 @@
 import AsciiJellyfish from "@/components/AsciiJellyfish";
 import AsciiBlackHole from "@/components/AsciiBlackHole";
 import AsciiFrogs from "@/components/AsciiFrogs";
-import PocketFrogs from "@/components/PocketFrogs";
 
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
@@ -264,6 +263,41 @@ function Physics() {
 }
 
 function Grid() {
+  const formulas = [
+    "a²-b²=(a-b)(a+b)",
+    "(a+b)²=a²+2ab+b²",
+    "(a-b)²=a²-2ab+b²",
+    "a³+b³=(a+b)(a²-ab+b²)",
+    "a³-b³=(a-b)(a²+ab+b²)",
+    "(a+b)³=a³+3a²b+3ab²+b³",
+    "(a-b)³=a³-3a²b+3ab²-b³",
+    "x²-5x+6=(x-2)(x-3)",
+    "2x+3=7 → x=2",
+    "ax²+bx+c=0",
+    "D=b²-4ac",
+    "x=(-b±√D)/2a",
+    "y=kx+b",
+    "y=ax²+bx+c",
+    "S=v₀t+at²/2",
+    "v=v₀+at",
+    "a=Δv/Δt",
+    "F=ma",
+    "E=mc²",
+    "sin²α+cos²α=1",
+    "tanα=sinα/cosα",
+    "a/sinA=b/sinB",
+    "S=½ab·sinγ",
+    "V=abc",
+    "S=2(ab+bc+ac)",
+    "√(a²+b²)=c",
+    "log(ab)=log a+log b",
+    "aⁿ·aᵐ=aⁿ⁺ᵐ",
+    "(aⁿ)ᵐ=aⁿᵐ",
+    "1/a + 1/b = (a+b)/ab",
+    "x²+y²=r²",
+    "(x-a)²+(y-b)²=r²",
+  ];
+
   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => {
     ctx.fillStyle = "#06060a";
     ctx.fillRect(0, 0, w, h);
@@ -271,7 +305,7 @@ function Grid() {
     const rows = 18;
     const cw = w / cols;
     const ch = h / rows;
-    ctx.font = "14px monospace";
+    ctx.font = "11px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
@@ -285,18 +319,23 @@ function Grid() {
         const influence = Math.max(0, 1 - d / 220);
         const offsetX = dx * influence * 0.35;
         const offsetY = dy * influence * 0.35;
-        // density + character shift based on influence and time
         const noise = Math.sin(x * 0.4 + y * 0.3 + t * 1.2) * 0.5 + 0.5;
-        let char: string;
-        if (influence > 0.45) char = "█";
-        else if (influence > 0.2) char = "▓";
-        else if (noise > 0.65) char = "·";
-        else char = String.fromCharCode(33 + ((x * 11 + y * 17 + (t * 6) | 0) % 48));
 
         const lightness = 48 + influence * 35 + noise * 12;
         const hue = 200 + influence * 80 + (x + y) * 2;
         ctx.fillStyle = `hsl(${hue % 360}, 65%, ${lightness}%)`;
-        ctx.fillText(char, px + offsetX, py + offsetY);
+
+        if (influence > 0.35) {
+          const idx = (y * cols + x) % formulas.length;
+          ctx.font = "9px monospace";
+          ctx.fillText(formulas[idx], px + offsetX, py + offsetY);
+          ctx.font = "11px monospace";
+        } else if (noise > 0.65) {
+          ctx.fillText("·", px + offsetX, py + offsetY);
+        } else {
+          const char = String.fromCharCode(33 + ((x * 11 + y * 17 + (t * 6) | 0) % 48));
+          ctx.fillText(char, px + offsetX, py + offsetY);
+        }
       }
     }
   };
@@ -322,7 +361,6 @@ export default function Home() {
     { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
     { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
     { title: "Reactive Grid", component: <Grid />, bg: "bg-black" },
-    { title: "Pocket Frogs", component: <PocketFrogs />, bg: "bg-green-950" },
   ];
 
   return (
