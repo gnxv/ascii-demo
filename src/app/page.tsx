@@ -8,314 +8,254 @@ import "lenis/dist/lenis.css";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const products = [
-  { cat: "KINETICS SERIES", title: "Cocoon Recovery", desc: "Teardrop-inspired recovery pod with breathable structure on arched frame—calm, sculptural retreat for post-training balance.", img: "/cocoon-fitness.jpg", video: "/cocoon-hover.mp4" },
-  { cat: "ABSTRACT", title: "Play Curl", desc: "Elevated, translucent curl inviting vertical exploration in a secluded-yet-visible canopy.", img: "/studio-fitness.jpg", video: "/studio-hover.mp4" },
-  { cat: "TREEHOUSES", title: "Tree Hideout", desc: "At Fernvale Link, a tree-trunk-base playscape hides climbs and slides in architectural form.", img: "/awards-fitness.jpg", video: "/studio-hover.mp4" },
-  { cat: "PLAYSPIRE", title: "Playspire Mini", desc: "Space-efficient vertical play that sparks exploration, movement and focused intensity.", img: "/gym.jpg", video: "/hero-hover.mp4" },
-];
+function useCanvas(draw: (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => void) {
+  const ref = useRef<HTMLCanvasElement>(null);
+  const mouse = useRef({ x: 0, y: 0 });
 
-const references = [
-  { cat: "PARKS", title: "Como Adventure Grove – Singapore", img: "/studio.jpg" },
-  { cat: "HOSPITALITY", title: "The Ritz-Carlton – Maldives", img: "/spa.jpg" },
-  { cat: "MIXED-USE", title: "The Exchange TRX – Malaysia", img: "/block1.jpg" },
-];
+  useEffect(() => {
+    const canvas = ref.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-function HoverMedia({ img, video, alt, className = "" }: { img: string; video?: string; alt: string; className?: string }) {
-  const videoRef = useRef<HTMLVideoElement>(null);
+    let raf = 0;
+    let t = 0;
 
-  const onEnter = () => {
-    if (videoRef.current) {
-      videoRef.current.currentTime = 0;
-      videoRef.current.play().catch(() => {});
+    const resize = () => {
+      const dpr = Math.min(window.devicePixelRatio || 1, 2);
+      canvas.width = canvas.offsetWidth * dpr;
+      canvas.height = canvas.offsetHeight * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    };
+    resize();
+    window.addEventListener("resize", resize);
+
+    const onMove = (e: MouseEvent) => {
+      const r = canvas.getBoundingClientRect();
+      mouse.current = { x: e.clientX - r.left, y: e.clientY - r.top };
+    };
+    canvas.addEventListener("mousemove", onMove);
+
+    const loop = () => {
+      t += 0.016;
+      const w = canvas.offsetWidth;
+      const h = canvas.offsetHeight;
+      draw(ctx, w, h, t, mouse.current);
+      raf = requestAnimationFrame(loop);
+    };
+    loop();
+
+    return () => {
+      cancelAnimationFrame(raf);
+      window.removeEventListener("resize", resize);
+      canvas.removeEventListener("mousemove", onMove);
+    };
+  }, [draw]);
+
+  return ref;
+}
+
+function Jellyfish() {
+  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
+    ctx.fillStyle = "#0a0a12";
+    ctx.fillRect(0, 0, w, h);
+    ctx.font = "14px monospace";
+    ctx.fillStyle = "#7dd3fc";
+    const chars = ["~", "≈", "∿", "∼", "·", "•", "°"];
+    for (let i = 0; i < 5; i++) {
+      const x = (w * 0.15 + i * w * 0.18 + Math.sin(t * 0.4 + i) * 40) | 0;
+      const y = (h * 0.35 + Math.cos(t * 0.3 + i * 0.7) * 60) | 0;
+      // bell
+      for (let r = 0; r < 8; r++) {
+        const c = chars[(r + (t * 4 + i * 3) | 0) % chars.length];
+        ctx.fillText(c, x + Math.cos(r * 0.7) * 18, y + Math.sin(r * 0.5) * 10);
+      }
+      // tentacles
+      for (let k = 0; k < 6; k++) {
+        const tx = x + (k - 2.5) * 6;
+        const ty = y + 16 + Math.sin(t * 2 + k) * 8;
+        ctx.fillText("~", tx, ty);
+        ctx.fillText("~", tx, ty + 10);
+      }
     }
   };
-  const onLeave = () => {
-    if (videoRef.current) {
-      videoRef.current.pause();
+  const ref = useCanvas(draw);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function Snow() {
+  const particles = useRef<{ x: number; y: number; s: number; v: number }[]>([]);
+  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
+    if (particles.current.length === 0) {
+      for (let i = 0; i < 120; i++) {
+        particles.current.push({ x: Math.random() * w, y: Math.random() * h, s: 8 + Math.random() * 10, v: 0.3 + Math.random() * 0.8 });
+      }
+    }
+    ctx.fillStyle = "#0b1220";
+    ctx.fillRect(0, 0, w, h);
+    ctx.font = "16px monospace";
+    const chars = ["*", "·", "•", "❄", "·", "+"];
+    particles.current.forEach((p, i) => {
+      p.y += p.v;
+      p.x += Math.sin(t + i) * 0.3;
+      if (p.y > h) p.y = -10;
+      ctx.fillStyle = `rgba(255,255,255,${0.4 + Math.sin(t * 2 + i) * 0.3})`;
+      ctx.fillText(chars[i % chars.length], p.x, p.y);
+    });
+  };
+  const ref = useCanvas(draw);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function MeltText() {
+  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
+    ctx.fillStyle = "#111";
+    ctx.fillRect(0, 0, w, h);
+    const text = "ASSEMBLE";
+    ctx.font = "bold 72px monospace";
+    ctx.textAlign = "center";
+    const cx = w / 2;
+    const cy = h / 2;
+    const progress = (Math.sin(t * 0.4) + 1) / 2;
+    for (let i = 0; i < text.length; i++) {
+      const x = cx - (text.length * 42) / 2 + i * 42;
+      const y = cy + Math.sin(t * 1.5 + i) * 8 * (1 - progress);
+      const noise = Math.random() > progress * 0.85 ? String.fromCharCode(33 + Math.random() * 90) : text[i];
+      ctx.fillStyle = progress > 0.6 ? "#fff" : "#888";
+      ctx.fillText(noise, x, y);
     }
   };
+  const ref = useCanvas(draw);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
 
-  return (
-    <div className={`relative overflow-hidden group ${className}`} onMouseEnter={onEnter} onMouseLeave={onLeave}>
-      <img src={img} alt={alt} className="w-full h-full object-cover" />
-      {video && (
-        <video
-          ref={videoRef}
-          src={video}
-          muted
-          loop
-          playsInline
-          className="absolute inset-0 w-full h-full object-cover opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"
-        />
-      )}
-    </div>
-  );
+function GlitchSilhouette() {
+  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
+    ctx.fillStyle = "#050505";
+    ctx.fillRect(0, 0, w, h);
+    ctx.font = "12px monospace";
+    const cx = w / 2;
+    const cy = h / 2;
+    for (let y = -60; y < 60; y += 10) {
+      for (let x = -40; x < 40; x += 8) {
+        const dx = x;
+        const dy = y;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < 55 && dist > 28) {
+          const noise = Math.sin(t * 8 + x * 0.3 + y * 0.2) > 0.3;
+          if (noise || Math.random() > 0.7) {
+            ctx.fillStyle = noise ? "#0f0" : "#4ade80";
+            ctx.fillText(String.fromCharCode(33 + ((x + y + (t * 10) | 0) % 60)), cx + x, cy + y);
+          }
+        }
+      }
+    }
+  };
+  const ref = useCanvas(draw);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function Physics() {
+  const parts = useRef<{ x: number; y: number; vx: number; vy: number }[]>([]);
+  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => {
+    if (parts.current.length === 0) {
+      for (let i = 0; i < 80; i++) {
+        parts.current.push({ x: Math.random() * w, y: Math.random() * h, vx: 0, vy: 0 });
+      }
+    }
+    ctx.fillStyle = "#0c0c14";
+    ctx.fillRect(0, 0, w, h);
+    ctx.font = "14px monospace";
+    parts.current.forEach((p, i) => {
+      const dx = mouse.x - p.x;
+      const dy = mouse.y - p.y;
+      const d = Math.sqrt(dx * dx + dy * dy) || 1;
+      const force = d < 140 ? (140 - d) * 0.002 : 0;
+      p.vx += (dx / d) * force;
+      p.vy += (dy / d) * force;
+      p.vx *= 0.96;
+      p.vy *= 0.96;
+      p.x += p.vx;
+      p.y += p.vy;
+      if (p.x < 0 || p.x > w) p.vx *= -1;
+      if (p.y < 0 || p.y > h) p.vy *= -1;
+      ctx.fillStyle = d < 100 ? "#f472b6" : "#a78bfa";
+      ctx.fillText(String.fromCharCode(36 + (i % 20)), p.x, p.y);
+    });
+  };
+  const ref = useCanvas(draw);
+  return <canvas ref={ref} className="w-full h-full" />;
+}
+
+function Grid() {
+  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => {
+    ctx.fillStyle = "#08080c";
+    ctx.fillRect(0, 0, w, h);
+    ctx.font = "13px monospace";
+    const cols = 28;
+    const rows = 16;
+    const cw = w / cols;
+    const ch = h / rows;
+    for (let y = 0; y < rows; y++) {
+      for (let x = 0; x < cols; x++) {
+        const px = x * cw + cw / 2;
+        const py = y * ch + ch / 2;
+        const dx = mouse.x - px;
+        const dy = mouse.y - py;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        const influence = Math.max(0, 1 - d / 180);
+        const offsetX = dx * influence * 0.25;
+        const offsetY = dy * influence * 0.25;
+        const char = influence > 0.3 ? "█" : String.fromCharCode(33 + ((x * 7 + y * 13 + (t * 5) | 0) % 50));
+        ctx.fillStyle = `hsl(${(x * 8 + y * 4 + t * 40) % 360}, 70%, ${50 + influence * 30}%)`;
+        ctx.fillText(char, px + offsetX, py + offsetY);
+      }
+    }
+  };
+  const ref = useCanvas(draw);
+  return <canvas ref={ref} className="w-full h-full" />;
 }
 
 export default function Home() {
-  const mainRef = useRef<HTMLElement>(null);
-
   useEffect(() => {
-    const lenis = new Lenis({
-      duration: 1.1,
-      easing: (t) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      smoothWheel: true,
-      wheelMultiplier: 0.85,
-    });
-
-    lenis.on("scroll", ScrollTrigger.update);
-    gsap.ticker.add((time) => lenis.raf(time * 1000));
-    gsap.ticker.lagSmoothing(0);
-
-    // Clip-path text reveal — longer, more scroll-tied
-    gsap.utils.toArray(".clip-reveal").forEach((el: any) => {
-      gsap.fromTo(
-        el,
-        { clipPath: "inset(100% 0% 0% 0%)" },
-        {
-          clipPath: "inset(0% 0% 0% 0%)",
-          ease: "power1.out",
-          scrollTrigger: {
-            trigger: el,
-            start: "top 96%",
-            end: "top 48%",
-            scrub: 1,
-          },
-        }
-      );
-    });
-
-    // Stronger, smoother parallax
-    gsap.utils.toArray(".parallax-el").forEach((el: any) => {
-      const speed = parseFloat(el.dataset.speed || "0.4");
-      ScrollTrigger.create({
-        trigger: el,
-        start: "top bottom",
-        end: "bottom top",
-        scrub: 0.5,
-        onUpdate: (self) => {
-          const y = (self.progress - 0.5) * speed * 200;
-          el.style.setProperty("--parallax-y", `${y}px`);
-        },
-      });
-    });
-
-    // Staggered hero text entrance
-    const heroTl = gsap.timeline({ delay: 0.2 });
-    heroTl
-      .from(".hero-kicker", { y: 30, opacity: 0, duration: 1, ease: "power3.out" })
-      .from(".hero-title", { y: 60, opacity: 0, duration: 1.2, ease: "power3.out" }, "-=0.6")
-      .from(".hero-desc", { y: 40, opacity: 0, duration: 1, ease: "power3.out" }, "-=0.7");
-
-    // Section entrance with slight scale + y for more presence
-    gsap.utils.toArray("section").forEach((sec: any, i) => {
-      if (i === 0) return; // skip hero
-      gsap.from(sec, {
-        y: 40,
-        opacity: 0.85,
-        duration: 1.1,
-        ease: "power2.out",
-        scrollTrigger: {
-          trigger: sec,
-          start: "top 88%",
-          toggleActions: "play none none reverse",
-        },
-      });
-    });
-
-    return () => {
-      lenis.destroy();
-      ScrollTrigger.getAll().forEach((t) => t.kill());
-    };
+    const lenis = new Lenis({ duration: 1.2, smoothWheel: true });
+    function raf(time: number) {
+      lenis.raf(time);
+      requestAnimationFrame(raf);
+    }
+    requestAnimationFrame(raf);
+    return () => lenis.destroy();
   }, []);
 
+  const scenes = [
+    { title: "Jellyfish", component: <Jellyfish />, bg: "bg-black" },
+    { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
+    { title: "Melt / Assemble", component: <MeltText />, bg: "bg-neutral-900" },
+    { title: "Glitch Silhouette", component: <GlitchSilhouette />, bg: "bg-black" },
+    { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
+    { title: "Reactive Grid", component: <Grid />, bg: "bg-black" },
+  ];
+
   return (
-    <main ref={mainRef} className="bg-[#fff9f5] text-[#3b322d]">
-      {/* Hero */}
-      <section className="relative min-h-screen flex flex-col justify-end pb-16 md:pb-24 px-5 md:px-10 lg:px-16 overflow-hidden">
-        <div className="absolute inset-0 parallax-el" data-speed="0.2">
-          <video
-            src="/hero-hover.mp4"
-            autoPlay
-            muted
-            loop
-            playsInline
-            poster="/hero-fitness.jpg"
-            className="w-full h-[118%] object-cover"
-            style={{ transform: "translateY(var(--parallax-y, 0px))" }}
-          />
-          <div className="absolute inset-0 bg-black/10 pointer-events-none" />
-        </div>
-        <div className="relative z-10 max-w-5xl">
-          <div className="hero-kicker text-[11px] tracking-[0.36em] uppercase mb-4 opacity-80 font-medium">
-            GLOBAL BESPOKE FITNESS DESIGN AND SPACES
-          </div>
-          <h1
-            className="hero-title font-semibold leading-[0.833] tracking-[-0.0333em]"
-            style={{ fontSize: "66.67px" }}
-          >
-            BESPOKE<br />ARCHITECTURAL<br />FITNESS
-          </h1>
-          <p className="hero-desc mt-6 text-base md:text-[17px] max-w-md opacity-90 leading-snug">
-            We design and craft bespoke fitness spaces that merge performance, recovery, and architectural precision.
-          </p>
-        </div>
-      </section>
+    <main className="bg-black text-white">
+      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center mix-blend-difference">
+        <div className="text-sm tracking-[0.3em] uppercase">ASCII DEMO</div>
+        <div className="text-xs opacity-60">6 scenes · code-drawn</div>
+      </header>
 
-      {/* Studio */}
-      <section id="studio" className="bg-[#f1e6df] py-16 md:py-22 px-5 md:px-10 lg:px-16">
-        <div className="max-w-[1320px] mx-auto">
-          <div className="text-[11px] tracking-[0.3em] uppercase mb-4 opacity-60 clip-reveal">STUDIO</div>
-          <h2 className="text-3xl md:text-[48px] leading-[1.02] tracking-[-0.02em] font-medium max-w-4xl clip-reveal">
-            We create extraordinary training spaces that inspire strength, movement, and balance, blending architectural precision and innovation.
-          </h2>
-          <div className="mt-10">
-            <a href="#products" className="btn-kinetics font-mono">
-              EXPLORE
-            </a>
+      {scenes.map((s, i) => (
+        <section key={i} className={`relative h-screen ${s.bg} flex items-center justify-center`}>
+          <div className="absolute inset-0">{s.component}</div>
+          <div className="relative z-10 text-center pointer-events-none">
+            <div className="text-[11px] tracking-[0.4em] uppercase opacity-50 mb-2">0{i + 1}</div>
+            <h2 className="text-4xl md:text-6xl font-medium tracking-tight">{s.title}</h2>
           </div>
-        </div>
-      </section>
+        </section>
+      ))}
 
-      {/* Embedded product (Play Curl style) */}
-      <section className="bg-[#201d1c] text-[#fff9f5] py-16 md:py-20 px-5 md:px-10 lg:px-16">
-        <div className="max-w-[1400px] mx-auto grid md:grid-cols-2 gap-10 md:gap-16 items-center">
-          <div className="overflow-hidden parallax-el" data-speed="0.28">
-            <img src="/studio-fitness.jpg" alt="Play Curl" className="w-full aspect-[4/3] object-cover" style={{ transform: "translateY(var(--parallax-y, 0px))" }} />
-          </div>
-          <div>
-            <div className="text-[11px] tracking-[0.3em] uppercase mb-3 opacity-60 clip-reveal">ABSTRACT</div>
-            <h3 className="text-2xl md:text-[36px] leading-tight tracking-[-0.015em] font-medium mb-4 clip-reveal">Play Curl</h3>
-            <p className="opacity-80 leading-relaxed text-[15px] clip-reveal">
-              Elevated, translucent curl inviting vertical exploration in a secluded-yet-visible canopy.
-            </p>
-            <a href="#" className="inline-block mt-6 text-[12px] tracking-[0.12em] uppercase underline underline-offset-4 hover:opacity-60 transition">
-              Read more: Play Curl
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Approach text */}
-      <section className="bg-[#fff9f5] py-16 md:py-20 px-5 md:px-10 lg:px-16">
-        <div className="max-w-3xl mx-auto text-center">
-          <p className="text-lg md:text-xl leading-relaxed opacity-85 clip-reveal">
-            Our approach combines architectural precision with material innovation to create fitness spaces that feel both refined and intensely functional—where every surface, light and volume supports performance and recovery.
-          </p>
-        </div>
-      </section>
-
-      {/* Featured */}
-      <section className="bg-[#f1e6df] py-16 md:py-22 px-5 md:px-10 lg:px-16">
-        <div className="max-w-[1400px] mx-auto">
-          <div className="text-[11px] tracking-[0.3em] uppercase mb-5 opacity-60 clip-reveal">FEATURED</div>
-          <div className="relative overflow-hidden h-[70vh] md:h-[80vh] parallax-el" data-speed="0.18">
-            <img src="/awards-fitness.jpg" alt="Featured" className="w-full h-[125%] object-cover" style={{ transform: "translateY(var(--parallax-y, 0px))" }} />
-            <div className="absolute bottom-8 left-8">
-              <a href="#" className="inline-flex items-center h-12 min-w-[10em] justify-center border border-white text-white px-6 text-[12px] tracking-[0.14em] uppercase font-medium hover:bg-white hover:text-[#3b322d] transition-all duration-300">
-                VIEW
-              </a>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Awards */}
-      <section id="awards" className="bg-[#fff9f5] py-16 md:py-22 px-5 md:px-10 lg:px-16">
-        <div className="max-w-[1320px] mx-auto grid md:grid-cols-2 gap-10 md:gap-16 items-start">
-          <div>
-            <div className="text-[11px] tracking-[0.3em] uppercase mb-2 opacity-60 clip-reveal">OUR</div>
-            <h2 className="text-5xl md:text-7xl leading-none tracking-[-0.03em] font-medium clip-reveal">AWARDS</h2>
-          </div>
-          <div className="pt-2">
-            <h3 className="text-2xl md:text-3xl font-medium mb-2 clip-reveal">Golden Pin Design Award</h3>
-            <div className="text-sm opacity-60 mb-4 clip-reveal">Category / Spatial Design</div>
-            <p className="opacity-80 leading-relaxed text-[15px] clip-reveal">
-              Since 1981, Taiwan’s Golden Pin Design Award has honored outstanding products and projects in the global Huaren market, with winners receiving the prestigious Design Mark and Best Design trophy.
-            </p>
-            <a href="#" className="inline-flex items-center h-12 min-w-[10em] justify-center mt-7 border border-[#3b322d] px-6 text-[12px] tracking-[0.14em] uppercase font-medium hover:bg-[#3b322d] hover:text-[#fff9f5] transition-all duration-300">
-              VIEW
-            </a>
-          </div>
-        </div>
-      </section>
-
-      {/* Products — 4 cards */}
-      <section id="products" className="bg-[#fff9f5] py-16 md:py-22 px-5 md:px-10 lg:px-16">
-        <div className="max-w-[1320px] mx-auto">
-          <div className="text-[11px] tracking-[0.3em] uppercase mb-4 opacity-60 clip-reveal">PRODUCTS</div>
-          <h2 className="text-3xl md:text-[48px] leading-[1.02] tracking-[-0.02em] font-medium mb-2 clip-reveal">BESPOKE PRODUCTS</h2>
-          <p className="text-lg opacity-80 mb-14 clip-reveal">Performance is more than training—it’s essential</p>
-
-          <div className="grid md:grid-cols-2 gap-x-12 gap-y-16">
-            {products.map((p) => (
-              <div key={p.title} className="clip-reveal">
-                <div className="overflow-hidden parallax-el mb-5" data-speed="0.22">
-                  <HoverMedia img={p.img} video={p.video} alt={p.title} className="w-full aspect-[4/3]" />
-                </div>
-                <div className="text-[11px] tracking-[0.3em] uppercase mb-2 opacity-60">{p.cat}</div>
-                <h3 className="text-2xl md:text-3xl font-medium mb-3">{p.title}</h3>
-                <p className="opacity-80 leading-relaxed text-[15px] mb-5">{p.desc}</p>
-                <a href="#" className="text-[12px] tracking-[0.12em] uppercase underline underline-offset-4 hover:opacity-60 transition">
-                  Read more: {p.title}
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* References */}
-      <section id="references" className="bg-[#f1e6df] py-20 md:py-28 px-5 md:px-10 lg:px-16">
-        <div className="max-w-[1320px] mx-auto">
-          <div className="text-[11px] tracking-[0.3em] uppercase mb-6 opacity-60 clip-reveal">REFERENCES</div>
-          <div className="grid md:grid-cols-3 gap-8 md:gap-10">
-            {references.map((r) => (
-              <div key={r.title} className="clip-reveal">
-                <div className="overflow-hidden parallax-el mb-5" data-speed="0.2">
-                  <img src={r.img} alt={r.title} className="w-full aspect-[3/2] object-cover" style={{ transform: "translateY(var(--parallax-y, 0px))" }} />
-                </div>
-                <div className="text-[11px] tracking-[0.3em] uppercase mb-2 opacity-60">{r.cat}</div>
-                <h3 className="text-xl md:text-2xl font-medium mb-4">{r.title}</h3>
-                <a href="#" className="text-[12px] tracking-[0.12em] uppercase underline underline-offset-4 hover:opacity-60 transition">
-                  Read more: {r.title}
-                </a>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Connect */}
-      <section id="connect" className="bg-[#f1e6df] py-16 md:py-22 px-5 md:px-10 lg:px-16">
-        <div className="max-w-[1320px] mx-auto grid md:grid-cols-2 gap-12 md:gap-20 items-start">
-          <div>
-            <h2 className="text-4xl md:text-6xl leading-[0.95] tracking-[-0.025em] font-medium mb-8 clip-reveal">
-              LET’S CREATE YOUR NEXT TRAINING SPACE
-            </h2>
-            <a href="#contact" className="inline-flex items-center h-12 min-w-[10em] justify-center border border-[#3b322d] px-6 text-[12px] tracking-[0.14em] uppercase font-medium hover:bg-[#3b322d] hover:text-[#fff9f5] transition-all duration-300">
-              CONTACT
-            </a>
-          </div>
-          <div className="pt-2">
-            <h3 className="text-xl md:text-2xl font-medium mb-4 clip-reveal">Keeping up with AUREA</h3>
-            <p className="opacity-80 leading-relaxed text-[15px] mb-6 clip-reveal">
-              Sometimes, we like to pen or bubble our thoughts on the creative processes, ideations, and little easter eggs that go into the spaces that we create. We’re excited about the work we do every day, and we’re elated to be able to share more about our craft.
-            </p>
-            <form className="flex flex-col sm:flex-row gap-3" onSubmit={(e) => e.preventDefault()}>
-              <input
-                type="email"
-                placeholder="Email address"
-                className="flex-1 border border-[#3b322d]/30 bg-transparent px-4 py-3 text-sm focus:outline-none focus:border-[#3b322d]"
-              />
-              <button type="submit" className="h-12 px-6 border border-[#3b322d] text-[12px] tracking-[0.14em] uppercase font-medium hover:bg-[#3b322d] hover:text-[#fff9f5] transition-all duration-300">
-                SUBSCRIBE
-              </button>
-            </form>
-          </div>
-        </div>
-      </section>
+      <footer className="py-12 text-center text-xs opacity-40">
+        ASCII / character animations · Next.js + Canvas + GSAP/Lenis
+      </footer>
     </main>
   );
 }
