@@ -58,7 +58,7 @@ export default function AsciiJellyfish() {
 
         // bell rings
         for (let r = 0; r < jelly.rings; r++) {
-          const rad = (49.5 + r * 15.75) * pulse;
+          const rad = (22 + r * 7) * pulse;
           const alpha = 0.5 + Math.sin(t * 2 + r) * 0.2;
           ctx.fillStyle = `rgba(186,130,255,${alpha})`;
           for (let p = 0; p < jelly.pts; p++) {
@@ -73,12 +73,12 @@ export default function AsciiJellyfish() {
         // tentacles
         for (let k = 0; k < jelly.tentacles; k++) {
           const ang = (k / jelly.tentacles) * Math.PI * 2;
-          let px = cx + Math.cos(ang) * 42 * pulse;
+          let px = cx + Math.cos(ang) * 28 * pulse;
           let py = cy + 18;
           for (let s = 0; s < 14; s++) {
             const wave = Math.sin(t * 1.5 + k + s * 0.4) * 6;
             px += wave * 0.15;
-            py += 16.5;
+            py += 11;
             const alpha = 0.65 - s * 0.035;
             ctx.fillStyle = `rgba(160,120,255,${Math.max(0.08, alpha)})`;
             const ch = tentChars[(k + s + (t * 3) | 0) % tentChars.length];
