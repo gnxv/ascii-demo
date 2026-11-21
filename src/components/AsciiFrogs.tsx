@@ -16,9 +16,9 @@ export default function AsciiFrogs() {
     canvas.width = w;
     canvas.height = h;
 
-    const frogs = Array.from({ length: 7 }, (_, i) => ({
-      x: 80 + Math.random() * (w - 160),
-      y: h * 0.62 + Math.random() * 40,
+    const frogs = Array.from({ length: 6 }, (_, i) => ({
+      x: 100 + Math.random() * (w - 200),
+      y: h * 0.64 + Math.random() * 30,
       phase: Math.random() * Math.PI * 2,
       jumpT: 0,
       jumping: false,
@@ -31,39 +31,42 @@ export default function AsciiFrogs() {
     let raf = 0;
     let t = 0;
 
-    const drawFrog = (f: typeof frogs[0], t: number) => {
-      const breathe = 1 + Math.sin(t * 1.4 + f.phase) * 0.04;
-      const blink = !f.jumping && Math.sin(t * 2.2 + f.phase) > 0.9;
+    const drawFrog = (f: typeof frogs[0]) => {
+      const breathe = 1 + Math.sin(t * 1.3 + f.phase) * 0.05;
+      const blink = !f.jumping && Math.sin(t * 2.1 + f.phase) > 0.88;
 
       ctx.save();
       ctx.translate(f.x, f.y);
       ctx.scale(breathe, 1);
 
-      // body
-      ctx.font = "bold 16px monospace";
+      // pear-shaped body (wider hips)
+      ctx.font = "bold 15px monospace";
       ctx.fillStyle = "#68b84c";
-      ctx.fillText("(====)", -28, 0);
-      ctx.fillText("/     \\", -32, 14);
+      ctx.fillText("(====)", -26, -2);
+      ctx.fillText("(     )", -28, 12);
+      ctx.fillText(" \\___/ ", -26, 24);
 
-      // spots
+      // spots with pale halo
+      ctx.fillStyle = "#bee28a";
+      ctx.fillText("·", -10, 4);
+      ctx.fillText("·", 4, 8);
       ctx.fillStyle = "#1e461e";
-      ctx.fillText("·", -12, -2);
-      ctx.fillText("·", 6, 2);
-      ctx.fillText("·", -4, 10);
+      ctx.fillText("•", -9, 4);
+      ctx.fillText("•", 5, 8);
 
-      // eyes
+      // single-cell eyes
       ctx.fillStyle = "#f0f0e4";
-      ctx.fillText(blink ? "-" : "●", -18, -10);
-      ctx.fillText(blink ? "-" : "●", 6, -10);
+      ctx.fillText(blink ? "-" : "●", -16, -8);
+      ctx.fillText(blink ? "-" : "●", 4, -8);
 
-      // legs
+      // legs: Z-folded at rest, kicked when leaping
       ctx.fillStyle = "#5ca442";
       if (f.jumping) {
-        ctx.fillText("/  \\", -14, 22);
-        ctx.fillText("\\  /", -14, 36);
+        ctx.fillText("/   \\", -16, 32);
+        ctx.fillText("\\   /", -16, 44);
       } else {
-        ctx.fillText("/\\  /\\", -20, 22);
-        ctx.fillText("  \\/  ", -12, 34);
+        ctx.fillText("/\\  /\\", -20, 30);
+        ctx.fillText("  \\/  ", -12, 42);
       }
 
       ctx.restore();
@@ -74,47 +77,46 @@ export default function AsciiFrogs() {
       ctx.fillStyle = "#0a1a0a";
       ctx.fillRect(0, 0, w, h);
 
-      // ground / water line
       ctx.fillStyle = "#1a3a1a";
-      ctx.fillRect(0, h * 0.78, w, h * 0.22);
+      ctx.fillRect(0, h * 0.8, w, h * 0.2);
       ctx.strokeStyle = "#2a5a2a";
       ctx.beginPath();
-      ctx.moveTo(0, h * 0.78);
-      ctx.lineTo(w, h * 0.78);
+      ctx.moveTo(0, h * 0.8);
+      ctx.lineTo(w, h * 0.8);
       ctx.stroke();
 
       frogs.forEach((f) => {
-        if (!f.jumping && Math.random() < 0.006) {
+        if (!f.jumping && Math.random() < 0.005) {
           f.jumping = true;
           f.jumpT = 0;
           f.startX = f.x;
           f.startY = f.y;
-          f.vx = (Math.random() - 0.5) * 180;
+          f.vx = (Math.random() - 0.5) * 160;
         }
 
         if (f.jumping) {
-          f.jumpT += 0.02;
+          f.jumpT += 0.018;
           const s = f.jumpT;
-          const hArc = 4 * s * (1 - s) * 90;
+          const hArc = 4 * s * (1 - s) * 100;
           f.x = f.startX + f.vx * s;
           f.y = f.startY - hArc;
           if (s >= 1) {
             f.jumping = false;
             f.splash = 1;
-            f.y = Math.min(f.y, h * 0.7);
+            f.y = Math.min(f.y, h * 0.72);
           }
         } else {
-          f.y += Math.sin(t * 1.3 + f.phase) * 0.4;
+          f.y += Math.sin(t * 1.2 + f.phase) * 0.35;
         }
 
         if (f.splash > 0) {
-          f.splash -= 0.03;
-          ctx.font = "14px monospace";
-          ctx.fillStyle = `rgba(140,200,140,${f.splash})`;
-          ctx.fillText("~ ~ ~", f.x - 20, f.y + 40);
+          f.splash -= 0.025;
+          ctx.font = "13px monospace";
+          ctx.fillStyle = `rgba(140,200,140,${Math.max(0, f.splash)})`;
+          ctx.fillText("~ ~ ~", f.x - 18, f.y + 50);
         }
 
-        drawFrog(f, t);
+        drawFrog(f);
       });
 
       raf = requestAnimationFrame(draw);
