@@ -1,7 +1,7 @@
 "use client";
 
 import AsciiJellyfish from "@/components/AsciiJellyfish";
-import AsciiBlackHole from "@/components/AsciiBlackHole";
+import AsciiMoon from "@/components/AsciiMoon";
 import AsciiFrogs from "@/components/AsciiFrogs";
 import PocketFrogs from "@/components/PocketFrogs";
 
