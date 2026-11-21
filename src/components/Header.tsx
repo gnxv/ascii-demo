@@ -11,7 +11,7 @@ const menuItems = [
 
 export default function Header() {
   return (
-    <header className="fixed top-4 right-8 z-50">
+    <header className="fixed top-4 right-24 z-50">
       <nav className="flex items-center gap-1 bg-black/80 backdrop-blur-sm px-1 py-0.5 border border-white/15" style={{ borderRadius: "2px" }}>
         {menuItems.map((item) => (
           <a
