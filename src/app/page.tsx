@@ -1,5 +1,7 @@
 "use client";
 
+import ThreeJellyfish from "@/components/ThreeJellyfish";
+
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
@@ -311,7 +313,7 @@ export default function Home() {
   }, []);
 
   const scenes = [
-    { title: "Jellyfish", component: <Jellyfish />, bg: "bg-black" },
+    { title: "Three.js Jellyfish", component: <ThreeJellyfish />, bg: "bg-black" },
     { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
     { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
     { title: "Reactive Grid", component: <Grid />, bg: "bg-black" },
