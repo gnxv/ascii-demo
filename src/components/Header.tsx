@@ -47,7 +47,7 @@ export default function Header() {
           <a
             key={item.label}
             href={item.href}
-            className="relative px-3 py-1.5 text-xs md:text-sm font-mono text-white/75 hover:text-white transition-colors group"
+            className="relative px-3 py-1.5 text-xs md:text-sm font-mono text-white/75 hover:text-white transition-all duration-200 group hover:shadow-[0_2px_0_rgba(255,255,255,0.15)] hover:-translate-y-px"
           >
             <span className="relative z-10">{item.label}</span>
             <span className="absolute inset-0 bg-white/10 opacity-0 group-hover:opacity-100 transition-opacity" />
