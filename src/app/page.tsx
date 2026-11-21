@@ -3,6 +3,7 @@
 import AsciiJellyfish from "@/components/AsciiJellyfish";
 import AsciiBlackHole from "@/components/AsciiBlackHole";
 import AsciiFrogs from "@/components/AsciiFrogs";
+import Header from "@/components/Header";
 
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
@@ -365,10 +366,7 @@ export default function Home() {
 
   return (
     <main className="bg-black text-white">
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4 flex justify-between items-center mix-blend-difference">
-        <div className="text-sm tracking-[0.3em] uppercase">ASCII DEMO</div>
-
-      </header>
+      <Header />
 
       {scenes.map((s, i) => (
         <section key={i} id={s.id} className={`relative h-screen ${s.bg} flex items-center justify-center`}>
