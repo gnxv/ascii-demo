@@ -1,7 +1,7 @@
 "use client";
 
 import ThreeFishes from "@/components/ThreeFishes";
-import ThreeJellyfish from "@/components/ThreeJellyfish";
+import AsciiJellyfish from "@/components/AsciiJellyfish";
 import AsciiFrogs from "@/components/AsciiFrogs";
 
 import { useEffect, useRef } from "react";
@@ -316,7 +316,7 @@ export default function Home() {
 
   const scenes = [
     { title: "Fishes", component: <ThreeFishes />, bg: "bg-slate-900" },
-    { title: "Three.js Jellyfish", component: <ThreeJellyfish />, bg: "bg-black" },
+    { title: "ASCII Jellyfish", component: <AsciiJellyfish />, bg: "bg-black" },
     { title: "ASCII Frogs", component: <AsciiFrogs />, bg: "bg-green-950" },
     { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
     { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
