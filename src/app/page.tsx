@@ -56,47 +56,107 @@ function useCanvas(draw: (ctx: CanvasRenderingContext2D, w: number, h: number, t
 }
 
 function Jellyfish() {
-  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
-    ctx.fillStyle = "#06060e";
-    ctx.fillRect(0, 0, w, h);
-    ctx.font = "18px monospace";
-    const bellChars = ["~", "≈", "∿", "∼", "·", "•", "°", "◦"];
-    const tentacleChars = ["~", "∼", "∿", "≈"];
+  const jellies = useRef<any[]>([]);
 
-    for (let i = 0; i < 4; i++) {
-      const x = (w * 0.18 + i * w * 0.22 + Math.sin(t * 0.35 + i * 1.2) * 50) | 0;
-      const y = (h * 0.38 + Math.cos(t * 0.25 + i * 0.9) * 70) | 0;
-      const scale = 1.4 + (i % 2) * 0.3;
-
-      // larger bell
-      for (let r = 0; r < 14; r++) {
-        const angle = (r / 14) * Math.PI;
-        const bx = Math.cos(angle) * 28 * scale;
-        const by = Math.sin(angle) * 16 * scale - 8;
-        const c = bellChars[(r + (t * 5 + i * 4) | 0) % bellChars.length];
-        ctx.fillStyle = `rgba(125, 211, 252, ${0.55 + Math.sin(t * 2 + r) * 0.25})`;
-        ctx.fillText(c, x + bx, y + by);
-      }
-
-      // inner texture
-      for (let k = 0; k < 6; k++) {
-        ctx.fillStyle = "rgba(186, 230, 253, 0.35)";
-        ctx.fillText("·", x + (k - 2.5) * 8 * scale, y + 4);
-      }
-
-      // longer tentacles
-      for (let k = 0; k < 8; k++) {
-        const tx = x + (k - 3.5) * 7 * scale;
-        const wave = Math.sin(t * 1.8 + k * 0.6 + i) * 12;
-        for (let seg = 0; seg < 5; seg++) {
-          const ty = y + 22 * scale + seg * 14 + wave * (seg * 0.3);
-          const tc = tentacleChars[(seg + k + (t * 3) | 0) % tentacleChars.length];
-          ctx.fillStyle = `rgba(125, 211, 252, ${0.7 - seg * 0.1})`;
-          ctx.fillText(tc, tx, ty);
+  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => {
+    if (jellies.current.length === 0) {
+      for (let j = 0; j < 3; j++) {
+        const rings = 7;
+        const pointsPerRing = 16;
+        const bell: { x: number; y: number; baseR: number; angle: number }[][] = [];
+        for (let r = 0; r < rings; r++) {
+          const ring: any[] = [];
+          const baseR = 28 + r * 6;
+          for (let p = 0; p < pointsPerRing; p++) {
+            ring.push({
+              x: 0,
+              y: 0,
+              baseR,
+              angle: (p / pointsPerRing) * Math.PI * 2,
+            });
+          }
+          bell.push(ring);
         }
+        const tentacles: { x: number; y: number }[][] = [];
+        for (let k = 0; k < 9; k++) {
+          const chain: any[] = [];
+          for (let s = 0; s < 18; s++) chain.push({ x: 0, y: 0 });
+          tentacles.push(chain);
+        }
+        jellies.current.push({
+          x: w * 0.25 + j * w * 0.25,
+          y: h * 0.35 + Math.sin(j) * 40,
+          bell,
+          tentacles,
+          phase: j * 1.7,
+        });
       }
     }
+
+    ctx.fillStyle = "#04040a";
+    ctx.fillRect(0, 0, w, h);
+
+    // ambient dust
+    ctx.fillStyle = "rgba(180, 210, 255, 0.25)";
+    ctx.font = "10px monospace";
+    for (let i = 0; i < 40; i++) {
+      const dx = ((i * 97) % w);
+      const dy = ((i * 53 + t * 12) % h);
+      ctx.fillText("·", dx, dy);
+    }
+
+    ctx.font = "15px monospace";
+    const bellChars = ["~", "≈", "∿", "∼", "·", "•"];
+    const tentChars = ["~", "∼", "∿", "≈", "·"];
+
+    jellies.current.forEach((jelly, ji) => {
+      const pulse = Math.sin(t * 1.4 + jelly.phase) * 0.18 + 1;
+      const driftX = Math.sin(t * 0.25 + jelly.phase) * 30;
+      const driftY = Math.cos(t * 0.2 + jelly.phase * 0.7) * 25;
+      const cx = jelly.x + driftX;
+      const cy = jelly.y + driftY;
+
+      // mouse repulsion (light)
+      const mdx = mouse.x - cx;
+      const mdy = mouse.y - cy;
+      const md = Math.sqrt(mdx * mdx + mdy * mdy) || 1;
+      const repel = md < 160 ? (160 - md) * 0.08 : 0;
+
+      // update & draw bell rings
+      jelly.bell.forEach((ring: any[], ri: number) => {
+        const rScale = pulse * (1 - ri * 0.04);
+        ring.forEach((pt, pi) => {
+          const ang = pt.angle + t * 0.15;
+          pt.x = cx + Math.cos(ang) * pt.baseR * rScale + (mdx / md) * repel * 0.3;
+          pt.y = cy + Math.sin(ang) * pt.baseR * 0.55 * rScale - ri * 3 + (mdy / md) * repel * 0.2;
+          const alpha = 0.45 + Math.sin(t * 2 + ri + pi) * 0.2;
+          ctx.fillStyle = `rgba(186, 130, 255, ${alpha})`;
+          const ch = bellChars[(ri + pi + (t * 4) | 0) % bellChars.length];
+          ctx.fillText(ch, pt.x, pt.y);
+        });
+      });
+
+      // tentacles as soft chains following lower bell points
+      jelly.tentacles.forEach((chain: any[], ti: number) => {
+        const attach = jelly.bell[jelly.bell.length - 1][ti % 16];
+        let px = attach.x;
+        let py = attach.y + 8;
+        chain.forEach((seg, si) => {
+          const targetX = px + Math.sin(t * 1.6 + ti + si * 0.4) * 7;
+          const targetY = py + 11;
+          seg.x += (targetX - seg.x) * 0.35;
+          seg.y += (targetY - seg.y) * 0.35;
+          const alpha = 0.65 - si * 0.028;
+          ctx.fillStyle = `rgba(160, 120, 255, ${Math.max(0.08, alpha)})`;
+          const ch = tentChars[(ti + si + (t * 3) | 0) % tentChars.length];
+          ctx.fillText(ch, seg.x, seg.y);
+          px = seg.x;
+          py = seg.y;
+        });
+      });
+    });
   };
+
   const ref = useCanvas(draw);
   return <canvas ref={ref} className="w-full h-full" />;
 }
