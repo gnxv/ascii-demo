@@ -31,7 +31,7 @@ export default function Header() {
   }, []);
 
   return (
-    <header className="fixed top-4 right-24 z-50 flex items-center gap-3">
+    <header className="fixed top-4 left-6 right-24 z-50 flex items-center justify-between">
       <div
         ref={labelRef}
         className="text-[11px] tracking-[0.28em] uppercase text-white/60 font-mono select-none"

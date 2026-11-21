@@ -379,7 +379,7 @@ export default function Home() {
       ))}
 
       <footer className="py-12 text-center text-xs opacity-40">
-        ASCII / character animations · Next.js + Canvas + GSAP/Lenis
+        ASCII
       </footer>
     </main>
   );
