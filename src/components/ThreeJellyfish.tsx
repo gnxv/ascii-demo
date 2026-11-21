@@ -3,8 +3,6 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 
-type Pt = { x: number; y: number; z: number; px: number; py: number; pz: number };
-
 export default function ThreeJellyfish() {
   const mountRef = useRef<HTMLDivElement>(null);
 
@@ -16,11 +14,11 @@ export default function ThreeJellyfish() {
     const height = mount.clientHeight;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x020208);
-    scene.fog = new THREE.FogExp2(0x020208, 0.03);
+    scene.background = new THREE.Color(0x03030a);
+    scene.fog = new THREE.FogExp2(0x03030a, 0.028);
 
-    const camera = new THREE.PerspectiveCamera(42, width / height, 0.1, 100);
-    camera.position.set(0, 0, 14);
+    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
+    camera.position.set(0, 0.5, 12);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
@@ -28,172 +26,95 @@ export default function ThreeJellyfish() {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
     mount.appendChild(renderer.domElement);
 
-    const ambient = new THREE.AmbientLight(0x332244, 0.6);
+    const ambient = new THREE.AmbientLight(0x2a2048, 0.7);
     scene.add(ambient);
-    const light = new THREE.PointLight(0xcc88ff, 1.6, 40);
-    light.position.set(2, 4, 6);
+    const light = new THREE.PointLight(0xdd99ff, 1.8, 40);
+    light.position.set(1, 4, 6);
     scene.add(light);
 
-    // --- soft bell (rings of points) ---
-    const rings = 8;
-    const ptsPerRing = 20;
-    const bell: Pt[][] = [];
-    for (let r = 0; r < rings; r++) {
-      const ring: Pt[] = [];
-      const rad = 0.6 + r * 0.28;
-      const y = 2.2 - r * 0.35;
-      for (let p = 0; p < ptsPerRing; p++) {
-        const a = (p / ptsPerRing) * Math.PI * 2;
-        ring.push({
-          x: Math.cos(a) * rad,
-          y,
-          z: Math.sin(a) * rad,
-          px: Math.cos(a) * rad,
-          py: y,
-          pz: Math.sin(a) * rad,
-        });
-      }
-      bell.push(ring);
-    }
+    const jelly = new THREE.Group();
+    scene.add(jelly);
 
-    // tentacles as chains attached to bottom ring
-    const tentacles: Pt[][] = [];
-    for (let i = 0; i < 18; i++) {
-      const chain: Pt[] = [];
-      const attach = bell[rings - 1][i % ptsPerRing];
-      for (let s = 0; s < 16; s++) {
-        chain.push({
-          x: attach.x,
-          y: attach.y - s * 0.28,
-          z: attach.z,
-          px: attach.x,
-          py: attach.y - s * 0.28,
-          pz: attach.z,
-        });
-      }
-      tentacles.push(chain);
-    }
-
-    // visual: lines for bell rings + tentacles
-    const bellLines: THREE.Line[] = [];
-    for (let r = 0; r < rings; r++) {
-      const geo = new THREE.BufferGeometry();
-      const pos = new Float32Array(ptsPerRing * 3);
-      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      const mat = new THREE.LineBasicMaterial({ color: 0xdd99ff, transparent: true, opacity: 0.7 });
-      const line = new THREE.LineLoop(geo, mat);
-      bellLines.push(line);
-      scene.add(line);
-    }
-
-    const tentLines: THREE.Line[] = [];
-    tentacles.forEach(() => {
-      const geo = new THREE.BufferGeometry();
-      const pos = new Float32Array(16 * 3);
-      geo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-      const mat = new THREE.LineBasicMaterial({ color: 0xaa66ee, transparent: true, opacity: 0.55 });
-      const line = new THREE.Line(geo, mat);
-      tentLines.push(line);
-      scene.add(line);
+    // Bell — clear dome
+    const bellGeo = new THREE.SphereGeometry(1.8, 48, 32, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    const bellMat = new THREE.MeshPhysicalMaterial({
+      color: 0xbb88ff,
+      emissive: 0x552288,
+      transparent: true,
+      opacity: 0.5,
+      roughness: 0.1,
+      transmission: 0.5,
+      thickness: 0.9,
+      side: THREE.DoubleSide,
     });
+    const bell = new THREE.Mesh(bellGeo, bellMat);
+    bell.position.y = 1.2;
+    jelly.add(bell);
+
+    // Inner glow
+    const glowGeo = new THREE.SphereGeometry(1.2, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.45);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xffaaff, transparent: true, opacity: 0.25 });
+    const glow = new THREE.Mesh(glowGeo, glowMat);
+    glow.position.y = 1.1;
+    jelly.add(glow);
+
+    // Tentacles hanging from the rim
+    const tentacles: THREE.Mesh[] = [];
+    const count = 24;
+    for (let i = 0; i < count; i++) {
+      const ang = (i / count) * Math.PI * 2;
+      const points = [
+        new THREE.Vector3(Math.cos(ang) * 1.55, 0.15, Math.sin(ang) * 1.55),
+        new THREE.Vector3(Math.cos(ang) * 1.4, -1.2, Math.sin(ang) * 1.4),
+        new THREE.Vector3(Math.cos(ang) * 1.1, -2.6, Math.sin(ang) * 1.1),
+        new THREE.Vector3(Math.cos(ang * 1.05) * 0.7, -4.0, Math.sin(ang * 1.05) * 0.7),
+        new THREE.Vector3(Math.cos(ang * 0.95) * 0.3, -5.2, Math.sin(ang * 0.95) * 0.3),
+      ];
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tube = new THREE.TubeGeometry(curve, 32, 0.03, 6, false);
+      const mat = new THREE.MeshPhongMaterial({
+        color: 0xaa66ee,
+        emissive: 0x331155,
+        transparent: true,
+        opacity: 0.7,
+      });
+      const tent = new THREE.Mesh(tube, mat);
+      tent.userData = { phase: i * 0.4, base: points.map(p => p.clone()) };
+      tentacles.push(tent);
+      jelly.add(tent);
+    }
 
     // dust
-    const dustCount = 180;
+    const dustCount = 160;
     const dustGeo = new THREE.BufferGeometry();
-    const dustPos = new Float32Array(dustCount * 3);
+    const pos = new Float32Array(dustCount * 3);
     for (let i = 0; i < dustCount; i++) {
-      dustPos[i * 3] = (Math.random() - 0.5) * 20;
-      dustPos[i * 3 + 1] = (Math.random() - 0.5) * 16;
-      dustPos[i * 3 + 2] = (Math.random() - 0.5) * 12;
+      pos[i * 3] = (Math.random() - 0.5) * 18;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 14;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 10;
     }
-    dustGeo.setAttribute("position", new THREE.BufferAttribute(dustPos, 3));
-    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xaaccff, size: 0.03, transparent: true, opacity: 0.3 }));
+    dustGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xb0c8ff, size: 0.025, transparent: true, opacity: 0.3 }));
     scene.add(dust);
 
     let t = 0;
     let raf = 0;
-    const mouse = { x: 0, y: 0 };
-
-    const onMove = (e: MouseEvent) => {
-      const r = mount.getBoundingClientRect();
-      mouse.x = ((e.clientX - r.left) / r.width - 0.5) * 8;
-      mouse.y = -((e.clientY - r.top) / r.height - 0.5) * 6;
-    };
-    mount.addEventListener("mousemove", onMove);
 
     const animate = () => {
       t += 0.016;
-      const pulse = 1 + Math.sin(t * 1.6) * 0.12;
+      const pulse = 1 + Math.sin(t * 1.5) * 0.06;
+      bell.scale.set(pulse, 1 + Math.sin(t * 1.5) * 0.03, pulse);
+      glow.scale.setScalar(pulse * 0.95);
 
-      // integrate bell points (verlet-ish + spring to rest)
-      bell.forEach((ring, ri) => {
-        const restR = (0.6 + ri * 0.28) * pulse;
-        const restY = 2.2 - ri * 0.35 + Math.sin(t * 0.4) * 0.15;
-        ring.forEach((pt, pi) => {
-          const ang = (pi / ptsPerRing) * Math.PI * 2 + t * 0.08;
-          const tx = Math.cos(ang) * restR;
-          const ty = restY;
-          const tz = Math.sin(ang) * restR;
-          // spring toward target
-          const dx = tx - pt.x;
-          const dy = ty - pt.y;
-          const dz = tz - pt.z;
-          pt.x += dx * 0.12;
-          pt.y += dy * 0.12;
-          pt.z += dz * 0.12;
-          // mouse push
-          const mdx = pt.x - mouse.x;
-          const mdy = pt.y - mouse.y;
-          const md = Math.sqrt(mdx * mdx + mdy * mdy) || 1;
-          if (md < 3) {
-            pt.x += (mdx / md) * 0.04;
-            pt.y += (mdy / md) * 0.04;
-          }
-        });
+      jelly.position.y = Math.sin(t * 0.3) * 0.3;
+      jelly.rotation.y = Math.sin(t * 0.1) * 0.2;
+
+      tentacles.forEach((tent, i) => {
+        tent.rotation.z = Math.sin(t * 1.0 + tent.userData.phase) * 0.12;
+        tent.rotation.x = Math.cos(t * 0.8 + tent.userData.phase) * 0.08;
       });
 
-      // tentacles follow
-      tentacles.forEach((chain, ti) => {
-        const attach = bell[rings - 1][ti % ptsPerRing];
-        let px = attach.x;
-        let py = attach.y;
-        let pz = attach.z;
-        chain.forEach((seg, si) => {
-          const wave = Math.sin(t * 1.4 + ti + si * 0.35) * 0.18;
-          const tx = px + wave;
-          const ty = py - 0.28;
-          const tz = pz + Math.cos(t * 1.1 + ti) * 0.12;
-          seg.x += (tx - seg.x) * 0.22;
-          seg.y += (ty - seg.y) * 0.22;
-          seg.z += (tz - seg.z) * 0.22;
-          px = seg.x;
-          py = seg.y;
-          pz = seg.z;
-        });
-      });
-
-      // update geometries
-      bell.forEach((ring, ri) => {
-        const pos = bellLines[ri].geometry.attributes.position.array as Float32Array;
-        ring.forEach((pt, pi) => {
-          pos[pi * 3] = pt.x;
-          pos[pi * 3 + 1] = pt.y;
-          pos[pi * 3 + 2] = pt.z;
-        });
-        bellLines[ri].geometry.attributes.position.needsUpdate = true;
-      });
-
-      tentacles.forEach((chain, ti) => {
-        const pos = tentLines[ti].geometry.attributes.position.array as Float32Array;
-        chain.forEach((seg, si) => {
-          pos[si * 3] = seg.x;
-          pos[si * 3 + 1] = seg.y;
-          pos[si * 3 + 2] = seg.z;
-        });
-        tentLines[ti].geometry.attributes.position.needsUpdate = true;
-      });
-
-      dust.rotation.y = t * 0.01;
+      dust.rotation.y = t * 0.008;
       renderer.render(scene, camera);
       raf = requestAnimationFrame(animate);
     };
@@ -211,7 +132,6 @@ export default function ThreeJellyfish() {
     return () => {
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
-      mount.removeEventListener("mousemove", onMove);
       if (mount.contains(renderer.domElement)) mount.removeChild(renderer.domElement);
       renderer.dispose();
     };
