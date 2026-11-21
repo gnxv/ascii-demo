@@ -64,7 +64,7 @@ export default function AsciiJellyfish() {
           for (let p = 0; p < jelly.pts; p++) {
             const ang = (p / jelly.pts) * Math.PI * 2 + t * 0.12;
             const x = cx + Math.cos(ang) * rad;
-            const y = cy + Math.sin(ang) * rad * 0.5 - r * 4;
+            const y = cy - Math.sin(ang) * rad * 0.5 - r * 4;
             const ch = bellChars[(r + p + (t * 4) | 0) % bellChars.length];
             ctx.fillText(ch, x, y);
           }
