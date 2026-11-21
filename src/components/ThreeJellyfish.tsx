@@ -14,87 +14,111 @@ export default function ThreeJellyfish() {
     const height = mount.clientHeight;
 
     const scene = new THREE.Scene();
-    scene.background = new THREE.Color(0x03030a);
-    scene.fog = new THREE.FogExp2(0x03030a, 0.028);
+    scene.background = new THREE.Color(0x010108);
+    scene.fog = new THREE.FogExp2(0x010108, 0.025);
 
-    const camera = new THREE.PerspectiveCamera(40, width / height, 0.1, 100);
-    camera.position.set(0, 0.5, 12);
+    const camera = new THREE.PerspectiveCamera(38, width / height, 0.1, 100);
+    camera.position.set(0, 0.3, 13);
 
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(width, height);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.2;
     mount.appendChild(renderer.domElement);
 
-    const ambient = new THREE.AmbientLight(0x2a2048, 0.7);
+    const ambient = new THREE.AmbientLight(0x1a1028, 0.4);
     scene.add(ambient);
-    const light = new THREE.PointLight(0xdd99ff, 1.8, 40);
-    light.position.set(1, 4, 6);
-    scene.add(light);
+    const key = new THREE.PointLight(0xeeaaff, 2.4, 50);
+    key.position.set(1, 5, 7);
+    scene.add(key);
+    const rim = new THREE.PointLight(0x6644aa, 0.8, 30);
+    rim.position.set(-4, -1, -4);
+    scene.add(rim);
 
     const jelly = new THREE.Group();
     scene.add(jelly);
 
-    // Bell — clear dome
-    const bellGeo = new THREE.SphereGeometry(1.8, 48, 32, 0, Math.PI * 2, 0, Math.PI * 0.5);
+    // Flatter bell with more pronounced rim
+    const bellGeo = new THREE.SphereGeometry(2.6, 64, 36, 0, Math.PI * 2, 0, Math.PI * 0.42);
     const bellMat = new THREE.MeshPhysicalMaterial({
-      color: 0xbb88ff,
-      emissive: 0x552288,
+      color: 0xcc77ff,
+      emissive: 0x662299,
       transparent: true,
-      opacity: 0.5,
-      roughness: 0.1,
-      transmission: 0.5,
-      thickness: 0.9,
+      opacity: 0.38,
+      roughness: 0.08,
+      transmission: 0.65,
+      thickness: 1.2,
       side: THREE.DoubleSide,
     });
     const bell = new THREE.Mesh(bellGeo, bellMat);
-    bell.position.y = 1.2;
+    bell.position.y = 1.6;
     jelly.add(bell);
 
-    // Inner glow
-    const glowGeo = new THREE.SphereGeometry(1.2, 32, 24, 0, Math.PI * 2, 0, Math.PI * 0.45);
-    const glowMat = new THREE.MeshBasicMaterial({ color: 0xffaaff, transparent: true, opacity: 0.25 });
+    // Stronger inner glow
+    const glowGeo = new THREE.SphereGeometry(1.7, 40, 28, 0, Math.PI * 2, 0, Math.PI * 0.38);
+    const glowMat = new THREE.MeshBasicMaterial({ color: 0xff99ff, transparent: true, opacity: 0.32 });
     const glow = new THREE.Mesh(glowGeo, glowMat);
-    glow.position.y = 1.1;
+    glow.position.y = 1.5;
     jelly.add(glow);
 
-    // Tentacles hanging from the rim
+    // Thin tentacles from rim
     const tentacles: THREE.Mesh[] = [];
-    const count = 24;
-    for (let i = 0; i < count; i++) {
-      const ang = (i / count) * Math.PI * 2;
+    for (let i = 0; i < 48; i++) {
+      const ang = (i / 48) * Math.PI * 2;
+      const len = 5.5 + (i % 7) * 0.3;
       const points = [
-        new THREE.Vector3(Math.cos(ang) * 1.55, 0.15, Math.sin(ang) * 1.55),
-        new THREE.Vector3(Math.cos(ang) * 1.4, -1.2, Math.sin(ang) * 1.4),
-        new THREE.Vector3(Math.cos(ang) * 1.1, -2.6, Math.sin(ang) * 1.1),
-        new THREE.Vector3(Math.cos(ang * 1.05) * 0.7, -4.0, Math.sin(ang * 1.05) * 0.7),
-        new THREE.Vector3(Math.cos(ang * 0.95) * 0.3, -5.2, Math.sin(ang * 0.95) * 0.3),
+        new THREE.Vector3(Math.cos(ang) * 2.2, 0.2, Math.sin(ang) * 2.2),
+        new THREE.Vector3(Math.cos(ang) * 1.8, -1.4, Math.sin(ang) * 1.8),
+        new THREE.Vector3(Math.cos(ang * 1.05) * 1.2, -2.8, Math.sin(ang * 1.05) * 1.2),
+        new THREE.Vector3(Math.cos(ang * 0.95) * 0.6, -4.2, Math.sin(ang * 0.95) * 0.6),
+        new THREE.Vector3(Math.cos(ang * 1.1) * 0.25, -len, Math.sin(ang * 1.1) * 0.25),
       ];
       const curve = new THREE.CatmullRomCurve3(points);
-      const tube = new THREE.TubeGeometry(curve, 32, 0.03, 6, false);
+      const tube = new THREE.TubeGeometry(curve, 36, 0.018, 5, false);
       const mat = new THREE.MeshPhongMaterial({
-        color: 0xaa66ee,
-        emissive: 0x331155,
+        color: 0xbb66ee,
+        emissive: 0x442266,
         transparent: true,
-        opacity: 0.7,
+        opacity: 0.6,
       });
       const tent = new THREE.Mesh(tube, mat);
-      tent.userData = { phase: i * 0.4, base: points.map(p => p.clone()) };
+      tent.userData = { phase: i * 0.28 };
       tentacles.push(tent);
       jelly.add(tent);
     }
 
-    // dust
-    const dustCount = 160;
+    // Thicker central oral arms
+    for (let i = 0; i < 5; i++) {
+      const ang = (i / 5) * Math.PI * 2;
+      const points = [
+        new THREE.Vector3(Math.cos(ang) * 0.3, 0.1, Math.sin(ang) * 0.3),
+        new THREE.Vector3(Math.cos(ang) * 0.5, -1.6, Math.sin(ang) * 0.5),
+        new THREE.Vector3(Math.cos(ang * 1.1) * 0.35, -3.2, Math.sin(ang * 1.1) * 0.35),
+        new THREE.Vector3(Math.cos(ang * 0.9) * 0.15, -4.4, Math.sin(ang * 0.9) * 0.15),
+      ];
+      const curve = new THREE.CatmullRomCurve3(points);
+      const tube = new THREE.TubeGeometry(curve, 20, 0.04, 6, false);
+      const mat = new THREE.MeshPhongMaterial({
+        color: 0xdd99ff,
+        emissive: 0x663399,
+        transparent: true,
+        opacity: 0.75,
+      });
+      jelly.add(new THREE.Mesh(tube, mat));
+    }
+
+    // denser dust
+    const dustCount = 320;
     const dustGeo = new THREE.BufferGeometry();
     const pos = new Float32Array(dustCount * 3);
     for (let i = 0; i < dustCount; i++) {
-      pos[i * 3] = (Math.random() - 0.5) * 18;
-      pos[i * 3 + 1] = (Math.random() - 0.5) * 14;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * 10;
+      pos[i * 3] = (Math.random() - 0.5) * 22;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 16;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 12;
     }
     dustGeo.setAttribute("position", new THREE.BufferAttribute(pos, 3));
-    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xb0c8ff, size: 0.025, transparent: true, opacity: 0.3 }));
+    const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ color: 0xc8d8ff, size: 0.022, transparent: true, opacity: 0.35 }));
     scene.add(dust);
 
     let t = 0;
@@ -102,19 +126,21 @@ export default function ThreeJellyfish() {
 
     const animate = () => {
       t += 0.016;
-      const pulse = 1 + Math.sin(t * 1.5) * 0.06;
-      bell.scale.set(pulse, 1 + Math.sin(t * 1.5) * 0.03, pulse);
-      glow.scale.setScalar(pulse * 0.95);
+      // wave-like pulse (stronger on rim)
+      const pulse = 1 + Math.sin(t * 1.4) * 0.05;
+      const rimPulse = 1 + Math.sin(t * 1.4 + 0.4) * 0.08;
+      bell.scale.set(rimPulse, pulse, rimPulse);
+      glow.scale.setScalar(pulse * 0.96);
 
-      jelly.position.y = Math.sin(t * 0.3) * 0.3;
-      jelly.rotation.y = Math.sin(t * 0.1) * 0.2;
+      jelly.position.y = Math.sin(t * 0.28) * 0.35;
+      jelly.rotation.y = Math.sin(t * 0.08) * 0.25;
 
-      tentacles.forEach((tent, i) => {
-        tent.rotation.z = Math.sin(t * 1.0 + tent.userData.phase) * 0.12;
-        tent.rotation.x = Math.cos(t * 0.8 + tent.userData.phase) * 0.08;
+      tentacles.forEach((tent) => {
+        tent.rotation.z = Math.sin(t * 0.95 + tent.userData.phase) * 0.1;
+        tent.rotation.x = Math.cos(t * 0.75 + tent.userData.phase) * 0.07;
       });
 
-      dust.rotation.y = t * 0.008;
+      dust.rotation.y = t * 0.006;
       renderer.render(scene, camera);
       raf = requestAnimationFrame(animate);
     };
