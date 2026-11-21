@@ -333,7 +333,8 @@ function Grid() {
         } else if (noise > 0.65) {
           ctx.fillText("·", px + offsetX, py + offsetY);
         } else {
-          const char = String.fromCharCode(33 + ((x * 11 + y * 17 + (t * 6) | 0) % 48));
+          const mathChars = "0123456789abcnxyzABCXYZ+-*/=<>()[]{}αβγδεθλπσωΣΔΩ√∞∂∫∑∏≠≤≥±×÷·";
+          const char = mathChars[(x * 11 + y * 17 + (t * 6) | 0) % mathChars.length];
           ctx.fillText(char, px + offsetX, py + offsetY);
         }
       }
@@ -356,11 +357,11 @@ export default function Home() {
 
   const scenes = [
     { title: "", component: <AsciiJellyfish />, bg: "bg-black" },
-    { title: "ASCII Black Hole", component: <AsciiBlackHole />, bg: "bg-black" },
-    { title: "ASCII Frogs", component: <AsciiFrogs />, bg: "bg-green-950" },
-    { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
-    { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
-    { title: "Reactive Grid", component: <Grid />, bg: "bg-black" },
+    { title: "", component: <AsciiBlackHole />, bg: "bg-black" },
+    { title: "", component: <AsciiFrogs />, bg: "bg-green-950" },
+    { title: "", component: <Snow />, bg: "bg-slate-950" },
+    { title: "", component: <Physics />, bg: "bg-zinc-950" },
+    { title: "", component: <Grid />, bg: "bg-black" },
   ];
 
   return (
