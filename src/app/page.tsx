@@ -57,25 +57,43 @@ function useCanvas(draw: (ctx: CanvasRenderingContext2D, w: number, h: number, t
 
 function Jellyfish() {
   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
-    ctx.fillStyle = "#0a0a12";
+    ctx.fillStyle = "#06060e";
     ctx.fillRect(0, 0, w, h);
-    ctx.font = "14px monospace";
-    ctx.fillStyle = "#7dd3fc";
-    const chars = ["~", "≈", "∿", "∼", "·", "•", "°"];
-    for (let i = 0; i < 5; i++) {
-      const x = (w * 0.15 + i * w * 0.18 + Math.sin(t * 0.4 + i) * 40) | 0;
-      const y = (h * 0.35 + Math.cos(t * 0.3 + i * 0.7) * 60) | 0;
-      // bell
-      for (let r = 0; r < 8; r++) {
-        const c = chars[(r + (t * 4 + i * 3) | 0) % chars.length];
-        ctx.fillText(c, x + Math.cos(r * 0.7) * 18, y + Math.sin(r * 0.5) * 10);
+    ctx.font = "18px monospace";
+    const bellChars = ["~", "≈", "∿", "∼", "·", "•", "°", "◦"];
+    const tentacleChars = ["~", "∼", "∿", "≈"];
+
+    for (let i = 0; i < 4; i++) {
+      const x = (w * 0.18 + i * w * 0.22 + Math.sin(t * 0.35 + i * 1.2) * 50) | 0;
+      const y = (h * 0.38 + Math.cos(t * 0.25 + i * 0.9) * 70) | 0;
+      const scale = 1.4 + (i % 2) * 0.3;
+
+      // larger bell
+      for (let r = 0; r < 14; r++) {
+        const angle = (r / 14) * Math.PI;
+        const bx = Math.cos(angle) * 28 * scale;
+        const by = Math.sin(angle) * 16 * scale - 8;
+        const c = bellChars[(r + (t * 5 + i * 4) | 0) % bellChars.length];
+        ctx.fillStyle = `rgba(125, 211, 252, ${0.55 + Math.sin(t * 2 + r) * 0.25})`;
+        ctx.fillText(c, x + bx, y + by);
       }
-      // tentacles
+
+      // inner texture
       for (let k = 0; k < 6; k++) {
-        const tx = x + (k - 2.5) * 6;
-        const ty = y + 16 + Math.sin(t * 2 + k) * 8;
-        ctx.fillText("~", tx, ty);
-        ctx.fillText("~", tx, ty + 10);
+        ctx.fillStyle = "rgba(186, 230, 253, 0.35)";
+        ctx.fillText("·", x + (k - 2.5) * 8 * scale, y + 4);
+      }
+
+      // longer tentacles
+      for (let k = 0; k < 8; k++) {
+        const tx = x + (k - 3.5) * 7 * scale;
+        const wave = Math.sin(t * 1.8 + k * 0.6 + i) * 12;
+        for (let seg = 0; seg < 5; seg++) {
+          const ty = y + 22 * scale + seg * 14 + wave * (seg * 0.3);
+          const tc = tentacleChars[(seg + k + (t * 3) | 0) % tentacleChars.length];
+          ctx.fillStyle = `rgba(125, 211, 252, ${0.7 - seg * 0.1})`;
+          ctx.fillText(tc, tx, ty);
+        }
       }
     }
   };
@@ -102,54 +120,6 @@ function Snow() {
       ctx.fillStyle = `rgba(255,255,255,${0.4 + Math.sin(t * 2 + i) * 0.3})`;
       ctx.fillText(chars[i % chars.length], p.x, p.y);
     });
-  };
-  const ref = useCanvas(draw);
-  return <canvas ref={ref} className="w-full h-full" />;
-}
-
-function MeltText() {
-  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
-    ctx.fillStyle = "#111";
-    ctx.fillRect(0, 0, w, h);
-    const text = "ASSEMBLE";
-    ctx.font = "bold 72px monospace";
-    ctx.textAlign = "center";
-    const cx = w / 2;
-    const cy = h / 2;
-    const progress = (Math.sin(t * 0.4) + 1) / 2;
-    for (let i = 0; i < text.length; i++) {
-      const x = cx - (text.length * 42) / 2 + i * 42;
-      const y = cy + Math.sin(t * 1.5 + i) * 8 * (1 - progress);
-      const noise = Math.random() > progress * 0.85 ? String.fromCharCode(33 + Math.random() * 90) : text[i];
-      ctx.fillStyle = progress > 0.6 ? "#fff" : "#888";
-      ctx.fillText(noise, x, y);
-    }
-  };
-  const ref = useCanvas(draw);
-  return <canvas ref={ref} className="w-full h-full" />;
-}
-
-function GlitchSilhouette() {
-  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
-    ctx.fillStyle = "#050505";
-    ctx.fillRect(0, 0, w, h);
-    ctx.font = "12px monospace";
-    const cx = w / 2;
-    const cy = h / 2;
-    for (let y = -60; y < 60; y += 10) {
-      for (let x = -40; x < 40; x += 8) {
-        const dx = x;
-        const dy = y;
-        const dist = Math.sqrt(dx * dx + dy * dy);
-        if (dist < 55 && dist > 28) {
-          const noise = Math.sin(t * 8 + x * 0.3 + y * 0.2) > 0.3;
-          if (noise || Math.random() > 0.7) {
-            ctx.fillStyle = noise ? "#0f0" : "#4ade80";
-            ctx.fillText(String.fromCharCode(33 + ((x + y + (t * 10) | 0) % 60)), cx + x, cy + y);
-          }
-        }
-      }
-    }
   };
   const ref = useCanvas(draw);
   return <canvas ref={ref} className="w-full h-full" />;
@@ -230,8 +200,6 @@ export default function Home() {
   const scenes = [
     { title: "Jellyfish", component: <Jellyfish />, bg: "bg-black" },
     { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
-    { title: "Melt / Assemble", component: <MeltText />, bg: "bg-neutral-900" },
-    { title: "Glitch Silhouette", component: <GlitchSilhouette />, bg: "bg-black" },
     { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
     { title: "Reactive Grid", component: <Grid />, bg: "bg-black" },
   ];
