@@ -162,23 +162,39 @@ function Jellyfish() {
 }
 
 function Snow() {
-  const particles = useRef<{ x: number; y: number; s: number; v: number }[]>([]);
+  const flakes = useRef<{ x: number; y: number; s: number; v: number; phase: number; char: string }[]>([]);
   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number) => {
-    if (particles.current.length === 0) {
-      for (let i = 0; i < 120; i++) {
-        particles.current.push({ x: Math.random() * w, y: Math.random() * h, s: 8 + Math.random() * 10, v: 0.3 + Math.random() * 0.8 });
+    if (flakes.current.length === 0) {
+      const chars = ["*", "·", "•", "❄", "+", "·", "◦"];
+      for (let i = 0; i < 180; i++) {
+        flakes.current.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          s: 9 + Math.random() * 14,
+          v: 0.25 + Math.random() * 1.1,
+          phase: Math.random() * Math.PI * 2,
+          char: chars[i % chars.length],
+        });
       }
     }
-    ctx.fillStyle = "#0b1220";
+    // gradient night sky
+    const g = ctx.createLinearGradient(0, 0, 0, h);
+    g.addColorStop(0, "#050814");
+    g.addColorStop(1, "#0c1428");
+    ctx.fillStyle = g;
     ctx.fillRect(0, 0, w, h);
-    ctx.font = "16px monospace";
-    const chars = ["*", "·", "•", "❄", "·", "+"];
-    particles.current.forEach((p, i) => {
+
+    flakes.current.forEach((p, i) => {
       p.y += p.v;
-      p.x += Math.sin(t + i) * 0.3;
-      if (p.y > h) p.y = -10;
-      ctx.fillStyle = `rgba(255,255,255,${0.4 + Math.sin(t * 2 + i) * 0.3})`;
-      ctx.fillText(chars[i % chars.length], p.x, p.y);
+      p.x += Math.sin(t * 0.8 + p.phase) * 0.45;
+      if (p.y > h + 10) {
+        p.y = -10;
+        p.x = Math.random() * w;
+      }
+      const alpha = 0.35 + Math.sin(t * 1.5 + p.phase) * 0.25;
+      ctx.font = `${p.s}px monospace`;
+      ctx.fillStyle = `rgba(230, 240, 255, ${alpha})`;
+      ctx.fillText(p.char, p.x, p.y);
     });
   };
   const ref = useCanvas(draw);
@@ -186,31 +202,56 @@ function Snow() {
 }
 
 function Physics() {
-  const parts = useRef<{ x: number; y: number; vx: number; vy: number }[]>([]);
+  const parts = useRef<{ x: number; y: number; vx: number; vy: number; char: string }[]>([]);
   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => {
     if (parts.current.length === 0) {
-      for (let i = 0; i < 80; i++) {
-        parts.current.push({ x: Math.random() * w, y: Math.random() * h, vx: 0, vy: 0 });
+      const chars = "$%&*+-=#@<>{}[]";
+      for (let i = 0; i < 110; i++) {
+        parts.current.push({
+          x: Math.random() * w,
+          y: Math.random() * h,
+          vx: 0,
+          vy: 0,
+          char: chars[i % chars.length],
+        });
       }
     }
-    ctx.fillStyle = "#0c0c14";
+    ctx.fillStyle = "#08080f";
     ctx.fillRect(0, 0, w, h);
-    ctx.font = "14px monospace";
+    ctx.font = "16px monospace";
+
     parts.current.forEach((p, i) => {
       const dx = mouse.x - p.x;
       const dy = mouse.y - p.y;
       const d = Math.sqrt(dx * dx + dy * dy) || 1;
-      const force = d < 140 ? (140 - d) * 0.002 : 0;
+      // attract within range, gentle repulsion very close
+      let force = 0;
+      if (d < 200) force = (200 - d) * 0.0018;
+      if (d < 40) force = -0.12;
       p.vx += (dx / d) * force;
       p.vy += (dy / d) * force;
-      p.vx *= 0.96;
-      p.vy *= 0.96;
+      // mild mutual repulsion
+      parts.current.forEach((o, j) => {
+        if (i === j) return;
+        const ox = p.x - o.x;
+        const oy = p.y - o.y;
+        const od = Math.sqrt(ox * ox + oy * oy) || 1;
+        if (od < 28) {
+          p.vx += (ox / od) * 0.04;
+          p.vy += (oy / od) * 0.04;
+        }
+      });
+      p.vx *= 0.965;
+      p.vy *= 0.965;
       p.x += p.vx;
       p.y += p.vy;
-      if (p.x < 0 || p.x > w) p.vx *= -1;
-      if (p.y < 0 || p.y > h) p.vy *= -1;
-      ctx.fillStyle = d < 100 ? "#f472b6" : "#a78bfa";
-      ctx.fillText(String.fromCharCode(36 + (i % 20)), p.x, p.y);
+      if (p.x < 10 || p.x > w - 10) p.vx *= -0.8;
+      if (p.y < 10 || p.y > h - 10) p.vy *= -0.8;
+
+      const hue = 280 + (i * 7) % 80;
+      const alpha = 0.55 + Math.min(d / 200, 1) * 0.4;
+      ctx.fillStyle = `hsla(${hue}, 70%, 72%, ${alpha})`;
+      ctx.fillText(p.char, p.x, p.y);
     });
   };
   const ref = useCanvas(draw);
@@ -219,13 +260,16 @@ function Physics() {
 
 function Grid() {
   const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => {
-    ctx.fillStyle = "#08080c";
+    ctx.fillStyle = "#06060a";
     ctx.fillRect(0, 0, w, h);
-    ctx.font = "13px monospace";
-    const cols = 28;
-    const rows = 16;
+    const cols = 32;
+    const rows = 18;
     const cw = w / cols;
     const ch = h / rows;
+    ctx.font = "14px monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
     for (let y = 0; y < rows; y++) {
       for (let x = 0; x < cols; x++) {
         const px = x * cw + cw / 2;
@@ -233,11 +277,20 @@ function Grid() {
         const dx = mouse.x - px;
         const dy = mouse.y - py;
         const d = Math.sqrt(dx * dx + dy * dy);
-        const influence = Math.max(0, 1 - d / 180);
-        const offsetX = dx * influence * 0.25;
-        const offsetY = dy * influence * 0.25;
-        const char = influence > 0.3 ? "█" : String.fromCharCode(33 + ((x * 7 + y * 13 + (t * 5) | 0) % 50));
-        ctx.fillStyle = `hsl(${(x * 8 + y * 4 + t * 40) % 360}, 70%, ${50 + influence * 30}%)`;
+        const influence = Math.max(0, 1 - d / 220);
+        const offsetX = dx * influence * 0.35;
+        const offsetY = dy * influence * 0.35;
+        // density + character shift based on influence and time
+        const noise = Math.sin(x * 0.4 + y * 0.3 + t * 1.2) * 0.5 + 0.5;
+        let char: string;
+        if (influence > 0.45) char = "█";
+        else if (influence > 0.2) char = "▓";
+        else if (noise > 0.65) char = "·";
+        else char = String.fromCharCode(33 + ((x * 11 + y * 17 + (t * 6) | 0) % 48));
+
+        const lightness = 48 + influence * 35 + noise * 12;
+        const hue = 200 + influence * 80 + (x + y) * 2;
+        ctx.fillStyle = `hsl(${hue % 360}, 65%, ${lightness}%)`;
         ctx.fillText(char, px + offsetX, py + offsetY);
       }
     }
