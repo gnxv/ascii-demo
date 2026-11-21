@@ -6,7 +6,7 @@ import Footer from "@/components/Footer";
 
 export const metadata: Metadata = {
   title: "ASCII Demo — Code-drawn animations",
-  description: "Six canvas scenes: jellyfish, snow, melting text, glitch silhouette, physics, reactive grid.",
+  description: "ASCII character animations. Next.js + Canvas + GSAP/Lenis.",
 };
 
 export default function RootLayout({

@@ -3,15 +3,10 @@
 import AsciiJellyfish from "@/components/AsciiJellyfish";
 import AsciiBlackHole from "@/components/AsciiBlackHole";
 import AsciiFrogs from "@/components/AsciiFrogs";
-import Header from "@/components/Header";
 
 import { useEffect, useRef } from "react";
-import { gsap } from "gsap";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
 import Lenis from "lenis";
 import "lenis/dist/lenis.css";
-
-gsap.registerPlugin(ScrollTrigger);
 
 function useCanvas(draw: (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => void) {
   const ref = useRef<HTMLCanvasElement>(null);
@@ -58,112 +53,6 @@ function useCanvas(draw: (ctx: CanvasRenderingContext2D, w: number, h: number, t
   }, [draw]);
 
   return ref;
-}
-
-function Jellyfish() {
-  const jellies = useRef<any[]>([]);
-
-  const draw = (ctx: CanvasRenderingContext2D, w: number, h: number, t: number, mouse: { x: number; y: number }) => {
-    if (jellies.current.length === 0) {
-      for (let j = 0; j < 3; j++) {
-        const rings = 7;
-        const pointsPerRing = 16;
-        const bell: { x: number; y: number; baseR: number; angle: number }[][] = [];
-        for (let r = 0; r < rings; r++) {
-          const ring: any[] = [];
-          const baseR = 28 + r * 6;
-          for (let p = 0; p < pointsPerRing; p++) {
-            ring.push({
-              x: 0,
-              y: 0,
-              baseR,
-              angle: (p / pointsPerRing) * Math.PI * 2,
-            });
-          }
-          bell.push(ring);
-        }
-        const tentacles: { x: number; y: number }[][] = [];
-        for (let k = 0; k < 9; k++) {
-          const chain: any[] = [];
-          for (let s = 0; s < 18; s++) chain.push({ x: 0, y: 0 });
-          tentacles.push(chain);
-        }
-        jellies.current.push({
-          x: w * 0.25 + j * w * 0.25,
-          y: h * 0.35 + Math.sin(j) * 40,
-          bell,
-          tentacles,
-          phase: j * 1.7,
-        });
-      }
-    }
-
-    ctx.fillStyle = "#04040a";
-    ctx.fillRect(0, 0, w, h);
-
-    // ambient dust
-    ctx.fillStyle = "rgba(180, 210, 255, 0.25)";
-    ctx.font = "10px monospace";
-    for (let i = 0; i < 40; i++) {
-      const dx = ((i * 97) % w);
-      const dy = ((i * 53 + t * 12) % h);
-      ctx.fillText("·", dx, dy);
-    }
-
-    ctx.font = "15px monospace";
-    const bellChars = ["~", "≈", "∿", "∼", "·", "•"];
-    const tentChars = ["~", "∼", "∿", "≈", "·"];
-
-    jellies.current.forEach((jelly, ji) => {
-      const pulse = Math.sin(t * 1.4 + jelly.phase) * 0.18 + 1;
-      const driftX = Math.sin(t * 0.25 + jelly.phase) * 30;
-      const driftY = Math.cos(t * 0.2 + jelly.phase * 0.7) * 25;
-      const cx = jelly.x + driftX;
-      const cy = jelly.y + driftY;
-
-      // mouse repulsion (light)
-      const mdx = mouse.x - cx;
-      const mdy = mouse.y - cy;
-      const md = Math.sqrt(mdx * mdx + mdy * mdy) || 1;
-      const repel = md < 160 ? (160 - md) * 0.08 : 0;
-
-      // update & draw bell rings
-      jelly.bell.forEach((ring: any[], ri: number) => {
-        const rScale = pulse * (1 - ri * 0.04);
-        ring.forEach((pt, pi) => {
-          const ang = pt.angle + t * 0.15;
-          pt.x = cx + Math.cos(ang) * pt.baseR * rScale + (mdx / md) * repel * 0.3;
-          pt.y = cy + Math.sin(ang) * pt.baseR * 0.55 * rScale - ri * 3 + (mdy / md) * repel * 0.2;
-          const alpha = 0.45 + Math.sin(t * 2 + ri + pi) * 0.2;
-          ctx.fillStyle = `rgba(186, 130, 255, ${alpha})`;
-          const ch = bellChars[(ri + pi + (t * 4) | 0) % bellChars.length];
-          ctx.fillText(ch, pt.x, pt.y);
-        });
-      });
-
-      // tentacles as soft chains following lower bell points
-      jelly.tentacles.forEach((chain: any[], ti: number) => {
-        const attach = jelly.bell[jelly.bell.length - 1][ti % 16];
-        let px = attach.x;
-        let py = attach.y + 8;
-        chain.forEach((seg, si) => {
-          const targetX = px + Math.sin(t * 1.6 + ti + si * 0.4) * 7;
-          const targetY = py + 11;
-          seg.x += (targetX - seg.x) * 0.35;
-          seg.y += (targetY - seg.y) * 0.35;
-          const alpha = 0.65 - si * 0.028;
-          ctx.fillStyle = `rgba(160, 120, 255, ${Math.max(0.08, alpha)})`;
-          const ch = tentChars[(ti + si + (t * 3) | 0) % tentChars.length];
-          ctx.fillText(ch, seg.x, seg.y);
-          px = seg.x;
-          py = seg.y;
-        });
-      });
-    });
-  };
-
-  const ref = useCanvas(draw);
-  return <canvas ref={ref} className="w-full h-full" />;
 }
 
 function Snow() {
@@ -366,15 +255,10 @@ export default function Home() {
 
   return (
     <main className="bg-black text-white">
-      <Header />
 
       {scenes.map((s, i) => (
         <section key={i} id={s.id} className={`relative h-screen ${s.bg} flex items-center justify-center`}>
           <div className="absolute inset-0">{s.component}</div>
-          <div className="relative z-10 text-center pointer-events-none">
-            <div className="text-[11px] tracking-[0.4em] uppercase opacity-50 mb-2">0{i + 1}</div>
-            <h2 className="text-4xl md:text-6xl font-medium tracking-tight">{s.title}</h2>
-          </div>
         </section>
       ))}
 
