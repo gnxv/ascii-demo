@@ -2,6 +2,7 @@
 
 import ThreeFishes from "@/components/ThreeFishes";
 import ThreeJellyfish from "@/components/ThreeJellyfish";
+import AsciiFrogs from "@/components/AsciiFrogs";
 
 import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
@@ -316,6 +317,7 @@ export default function Home() {
   const scenes = [
     { title: "Fishes", component: <ThreeFishes />, bg: "bg-slate-900" },
     { title: "Three.js Jellyfish", component: <ThreeJellyfish />, bg: "bg-black" },
+    { title: "ASCII Frogs", component: <AsciiFrogs />, bg: "bg-green-950" },
     { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
     { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
     { title: "Reactive Grid", component: <Grid />, bg: "bg-black" },
