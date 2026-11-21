@@ -313,6 +313,7 @@ export default function Home() {
   }, []);
 
   const scenes = [
+    { title: "Fishes", component: <ThreeFishes />, bg: "bg-slate-900" },
     { title: "Three.js Jellyfish", component: <ThreeJellyfish />, bg: "bg-black" },
     { title: "Snow", component: <Snow />, bg: "bg-slate-950" },
     { title: "Physics", component: <Physics />, bg: "bg-zinc-950" },
