@@ -355,12 +355,12 @@ export default function Home() {
   }, []);
 
   const scenes = [
-    { title: "", component: <AsciiJellyfish />, bg: "bg-black" },
-    { title: "", component: <AsciiBlackHole />, bg: "bg-black" },
-    { title: "", component: <AsciiFrogs />, bg: "bg-green-950" },
-    { title: "", component: <Snow />, bg: "bg-slate-950" },
-    { title: "", component: <Physics />, bg: "bg-zinc-950" },
-    { title: "", component: <Grid />, bg: "bg-black" },
+    { id: "jellyfish", title: "", component: <AsciiJellyfish />, bg: "bg-black" },
+    { id: "blackhole", title: "", component: <AsciiBlackHole />, bg: "bg-black" },
+    { id: "frogs", title: "", component: <AsciiFrogs />, bg: "bg-green-950" },
+    { id: "snow", title: "", component: <Snow />, bg: "bg-slate-950" },
+    { id: "physics", title: "", component: <Physics />, bg: "bg-zinc-950" },
+    { id: "grid", title: "", component: <Grid />, bg: "bg-black" },
   ];
 
   return (
@@ -371,7 +371,7 @@ export default function Home() {
       </header>
 
       {scenes.map((s, i) => (
-        <section key={i} className={`relative h-screen ${s.bg} flex items-center justify-center`}>
+        <section key={i} id={s.id} className={`relative h-screen ${s.bg} flex items-center justify-center`}>
           <div className="absolute inset-0">{s.component}</div>
           <div className="relative z-10 text-center pointer-events-none">
             <div className="text-[11px] tracking-[0.4em] uppercase opacity-50 mb-2">0{i + 1}</div>

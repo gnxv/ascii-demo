@@ -1,76 +1,38 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
-import Link from "next/link";
-import { gsap } from "gsap";
+import { useState } from "react";
 
 const menuItems = [
-  { label: "Products", href: "#products" },
-  { label: "References", href: "#references" },
-  { label: "Studio", href: "#studio" },
-  { label: "Services", href: "#services" },
-  { label: "Awards", href: "#awards" },
-  { label: "Materials/Fabrication", href: "#materials" },
-  { label: "Connect", href: "#connect" },
+  { label: "Jellyfish", href: "#jellyfish" },
+  { label: "Black Hole", href: "#blackhole" },
+  { label: "Frogs", href: "#frogs" },
+  { label: "Snow", href: "#snow" },
+  { label: "Physics", href: "#physics" },
+  { label: "Grid", href: "#grid" },
 ];
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false);
-  const overlayRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!overlayRef.current || !menuRef.current) return;
-
-    const items = menuRef.current.children;
-
-    if (isOpen) {
-      gsap.to(overlayRef.current, { opacity: 1, duration: 0.4, ease: "power2.out" });
-      gsap.fromTo(
-        items,
-        { y: 40, opacity: 0 },
-        { y: 0, opacity: 1, duration: 0.65, stagger: 0.06, ease: "power3.out", delay: 0.12 }
-      );
-      document.body.style.overflow = "hidden";
-    } else {
-      gsap.to(overlayRef.current, { opacity: 0, duration: 0.3, ease: "power2.in" });
-      document.body.style.overflow = "";
-    }
-  }, [isOpen]);
+  const [hovered, setHovered] = useState(false);
 
   return (
-    <>
-      <header className="fixed top-0 left-0 right-0 z-50 mix-blend-difference">
-        <div className="max-w-[1600px] mx-auto px-5 md:px-8 h-16 md:h-20 flex items-center justify-between">
-          <div />
-          <button
-            onClick={() => setIsOpen(!isOpen)}
-            className="btn-kinetics font-mono text-white border-white/50 hover:bg-[#f1e6df] hover:text-[#3b322d]"
-          >
-            {isOpen ? "CLOSE" : "MENU"}
-          </button>
-        </div>
-      </header>
-
-      <div
-        ref={overlayRef}
-        className={`fixed inset-0 z-40 bg-[#fff9f5] flex items-center justify-center ${
-          isOpen ? "pointer-events-auto" : "pointer-events-none opacity-0"
-        }`}
-      >
-        <nav ref={menuRef} className="text-center">
+    <header
+      className="fixed top-0 left-0 right-0 z-50 mix-blend-difference"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <div className="max-w-[1600px] mx-auto px-5 md:px-8 h-16 md:h-20 flex items-center">
+        <nav className="flex w-full">
           {menuItems.map((item) => (
-            <Link
+            <a
               key={item.label}
               href={item.href}
-              onClick={() => setIsOpen(false)}
-              className="block text-4xl md:text-6xl lg:text-7xl font-medium tracking-[-0.02em] py-2 md:py-2.5 hover:opacity-50 transition-opacity"
+              className="flex-1 text-center py-3 text-sm md:text-base font-mono tracking-wide text-white border-r border-white/20 last:border-r-0 hover:bg-[#f1e6df] hover:text-[#3b322d] transition-colors"
             >
               {item.label}
-            </Link>
+            </a>
           ))}
         </nav>
       </div>
-    </>
+    </header>
   );
 }
