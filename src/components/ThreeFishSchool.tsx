@@ -52,20 +52,29 @@ export default function ThreeFishSchool() {
 
     function createFishShape() {
       const s = new THREE.Shape()
-      // Longer base, same height
-      s.moveTo(1.55, 0)          // nose further out
-      s.lineTo(-0.55, 0.55)      // upper — height same
-      s.lineTo(-0.55, -0.55)     // lower — height same
+      // Great Pyramid side view proportions (base:height ≈ 230.4:146.5 ≈ 1.573)
+      // Height = 1.1, base ≈ 1.73
+      const h = 0.55
+      const base = 1.1 * 1.573
+      const noseX = base * 0.5
+      const baseX = -base * 0.5
+      s.moveTo(noseX, 0)
+      s.lineTo(baseX, h)
+      s.lineTo(baseX, -h)
       s.closePath()
       return s
     }
 
     function createTailShape() {
       const s = new THREE.Shape()
-      // Longer base, same height
-      s.moveTo(-0.4, 0)
-      s.lineTo(-1.55, 0.42)      // further back, height same
-      s.lineTo(-1.55, -0.42)
+      // Same pyramid ratio, smaller
+      const h = 0.42
+      const base = 0.84 * 1.573
+      const attachX = -0.15
+      const tipX = attachX - base
+      s.moveTo(attachX, 0)
+      s.lineTo(tipX, h)
+      s.lineTo(tipX, -h)
       s.closePath()
       return s
     }
