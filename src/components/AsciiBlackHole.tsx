@@ -64,56 +64,58 @@ export default function AsciiBlackHole() {
           float x = uv.x;
           float y = uv.y;
 
-          // Event horizon shadow
-          float horizon = length(uv * vec2(1.0, 1.35));
-          float shadow = smoothstep(0.22, 0.28, horizon);
+          // Event horizon shadow (dark center)
+          float horizon = length(uv * vec2(1.0, 1.15));
+          float shadow = smoothstep(0.18, 0.26, horizon);
 
-          // Main equatorial disk
-          float diskY = abs(y);
-          float inDisk = smoothstep(0.08, 0.0, diskY) * smoothstep(1.6, 0.3, abs(x));
-          float rMain = length(vec2(x, y * 3.5));
-          float mainFlow = rings(rMain, atan(y, x));
-          float mainMask = inDisk * smoothstep(0.25, 0.4, rMain) * smoothstep(1.7, 1.2, abs(x));
+          // --- Main equatorial disk (thin horizontal band) ---
+          float diskThick = 0.045;
+          float inDisk = smoothstep(diskThick, diskThick * 0.3, abs(y));
+          float rDisk = abs(x);
+          float diskRadial = smoothstep(0.28, 0.42, rDisk) * smoothstep(1.55, 1.15, rDisk);
+          float mainMask = inDisk * diskRadial;
+          float mainAng = atan(y * 2.0, x);
+          float mainFlow = rings(rDisk, mainAng);
 
-          // Upper lensed arc (far side bent over the top)
-          float arcCenterY = 0.42;
-          float arcR = length(vec2(x * 0.85, (y - arcCenterY) * 1.1));
-          float upperArc = smoothstep(0.55, 0.35, arcR) * smoothstep(0.15, 0.32, arcR);
-          upperArc *= smoothstep(-0.1, 0.15, y);
-          float upperFlow = rings(arcR, atan(y - arcCenterY, x));
+          // --- Upper lensed arc (smooth arch over the hole) ---
+          // Far side of disk bent upward
+          float archY = 0.38 - pow(abs(x) * 0.55, 2.0); // parabolic arch
+          float archDist = abs(y - archY);
+          float upperArc = smoothstep(0.12, 0.02, archDist);
+          upperArc *= smoothstep(0.9, 0.3, abs(x));
+          upperArc *= smoothstep(0.2, 0.35, y + 0.05); // only above center
+          float upperFlow = rings(0.5 + abs(x) * 0.6, atan(y - 0.2, x));
 
-          // Lower secondary image
-          float lowCenterY = -0.38;
-          float lowR = length(vec2(x * 1.1, (y - lowCenterY) * 1.3));
-          float lowerArc = smoothstep(0.32, 0.18, lowR) * smoothstep(0.06, 0.16, lowR);
-          lowerArc *= smoothstep(0.05, -0.1, y);
-          float lowerFlow = rings(lowR, atan(y - lowCenterY, x));
+          // --- Lower secondary (small ring under, not a fan) ---
+          float lowY = -0.32;
+          float lowR = length(vec2(x * 1.4, (y - lowY) * 2.2));
+          float lowerRing = smoothstep(0.22, 0.12, abs(lowR - 0.18));
+          lowerRing *= smoothstep(0.0, -0.08, y);
+          lowerRing *= smoothstep(0.7, 0.2, abs(x));
+          float lowerFlow = rings(lowR + 0.3, atan(y - lowY, x));
 
           // Photon ring
-          float pr = abs(horizon - 0.3);
-          float photon = exp(-pr * pr * 180.0) * 1.4;
+          float pr = abs(horizon - 0.24);
+          float photon = exp(-pr * pr * 220.0);
 
-          // Colors — orange-red like the reference
-          vec3 hot = vec3(1.0, 0.75, 0.25);
-          vec3 mid = vec3(1.0, 0.35, 0.05);
-          vec3 cool = vec3(0.7, 0.08, 0.02);
+          // Colors
+          vec3 hot = vec3(1.0, 0.72, 0.22);
+          vec3 mid = vec3(1.0, 0.32, 0.04);
+          vec3 cool = vec3(0.65, 0.06, 0.01);
 
           vec3 col = vec3(0.0);
 
           // Main disk
-          float mainI = mainMask * (0.4 + mainFlow * 0.8);
-          col += mix(cool, hot, mainFlow) * mainI;
+          col += mix(cool, hot, mainFlow) * mainMask * (0.5 + mainFlow * 0.7);
 
-          // Upper arc
-          float upI = upperArc * (0.35 + upperFlow * 0.9);
-          col += mix(mid, hot, upperFlow) * upI;
+          // Upper arch
+          col += mix(mid, hot, upperFlow) * upperArc * (0.4 + upperFlow * 0.8);
 
-          // Lower arc
-          float lowI = lowerArc * (0.3 + lowerFlow * 0.7);
-          col += mix(cool, mid, lowerFlow) * lowI * 0.85;
+          // Lower small ring
+          col += mix(cool, mid, lowerFlow) * lowerRing * 0.6;
 
           // Photon ring
-          col += vec3(1.0, 0.7, 0.3) * photon * shadow;
+          col += vec3(1.0, 0.65, 0.25) * photon * 1.2;
 
           // Dark center
           col *= shadow;
