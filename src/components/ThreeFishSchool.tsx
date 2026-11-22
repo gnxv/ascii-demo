@@ -47,26 +47,29 @@ export default function ThreeFishSchool() {
 
     scene.add(new THREE.AmbientLight(0x0a1520, 0.3))
 
-    function createRayShape() {
+    function createFishShape() {
       const s = new THREE.Shape()
-      // Ray (скат) side/top silhouette: wide diamond body + long thin tail
-      // Front point
-      s.moveTo(0.9, 0)
-      // Wide wing up
-      s.quadraticCurveTo(0.4, 0.55, -0.1, 0.85)
-      s.quadraticCurveTo(-0.35, 0.7, -0.5, 0.35)
-      // Long thin tail
-      s.lineTo(-1.6, 0.08)
-      s.lineTo(-1.75, 0)
-      s.lineTo(-1.6, -0.08)
-      s.lineTo(-0.5, -0.35)
-      // Wide wing down
-      s.quadraticCurveTo(-0.35, -0.7, -0.1, -0.85)
-      s.quadraticCurveTo(0.4, -0.55, 0.9, 0)
+      // Simple fish: big triangle body + smaller triangle tail
+      // Body (larger triangle)
+      s.moveTo(1.1, 0)          // nose
+      s.lineTo(-0.35, 0.55)     // upper body
+      s.lineTo(-0.35, -0.55)    // lower body
+      s.closePath()
       return s
     }
 
-    const rayGeo = new THREE.ShapeGeometry(createRayShape(), 12)
+    function createTailShape() {
+      const s = new THREE.Shape()
+      // Smaller tail triangle
+      s.moveTo(-0.25, 0)
+      s.lineTo(-1.15, 0.42)
+      s.lineTo(-1.15, -0.42)
+      s.closePath()
+      return s
+    }
+
+    const bodyGeo = new THREE.ShapeGeometry(createFishShape(), 1)
+    const tailGeo = new THREE.ShapeGeometry(createTailShape(), 1)
     const eyeGeo = new THREE.CircleGeometry(0.09, 10)
 
     const neonMat = new THREE.ShaderMaterial({
@@ -90,13 +93,10 @@ export default function ThreeFishSchool() {
           vHue = aHue;
           vPhase = aPhase;
 
-          // Ray glide: gentle wing ripple + long tail wave
-          float wing = smoothstep(0.3, -0.4, along);
-          float ripple = sin(along * 2.2 + uTime * 2.4 + aPhase) * 0.12 * wing;
-          pos.y += ripple;
-          // Long tail undulation
-          float tail = smoothstep(-0.4, -1.6, along);
-          pos.y += sin(along * 5.0 + uTime * 5.5 + aPhase) * 0.18 * tail;
+          // Simple fish tail wave
+          float tailFactor = smoothstep(0.1, -0.8, along);
+          float wave = sin(along * 4.0 + uTime * 5.0 + aPhase) * 0.22 * tailFactor;
+          pos.y += wave;
 
           vec4 mv = modelViewMatrix * instanceMatrix * vec4(pos * aSize, 1.0);
           gl_Position = projectionMatrix * mv;
@@ -191,11 +191,21 @@ export default function ThreeFishSchool() {
       sizeA[i] = f.size
     })
 
-    rayGeo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
-    rayGeo.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
-    rayGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
+    bodyGeo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
+    bodyGeo.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
+    bodyGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
 
-    const bodyMesh = new THREE.InstancedMesh(rayGeo, neonMat, FISH_COUNT)
+    tailGeo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
+    tailGeo.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
+    tailGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
+
+    const bodyMesh = new THREE.InstancedMesh(bodyGeo, neonMat, FISH_COUNT)
+    bodyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(bodyMesh)
+
+    const tailMesh = new THREE.InstancedMesh(tailGeo, neonMat, FISH_COUNT)
+    tailMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(tailMesh)
     bodyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     scene.add(bodyMesh)
 
@@ -421,6 +431,7 @@ export default function ThreeFishSchool() {
         dummy.rotateY(Math.PI)
         dummy.updateMatrix()
         bodyMesh.setMatrixAt(i, dummy.matrix)
+        tailMesh.setMatrixAt(i, dummy.matrix)
 
         const eyeOffset = dir.clone().multiplyScalar(0.72 * f.size)
         eyeDummy.position.copy(f.position).add(eyeOffset)
@@ -432,6 +443,7 @@ export default function ThreeFishSchool() {
       }
 
       bodyMesh.instanceMatrix.needsUpdate = true
+      tailMesh.instanceMatrix.needsUpdate = true
       eyeMesh.instanceMatrix.needsUpdate = true
 
       camera.position.x = Math.sin(time * 0.05) * 0.5
@@ -453,7 +465,8 @@ export default function ThreeFishSchool() {
       window.removeEventListener('resize', onResize)
       container.removeEventListener('pointermove', onMove)
       renderer.dispose()
-      rayGeo.dispose()
+      bodyGeo.dispose()
+      tailGeo.dispose()
       eyeGeo.dispose()
       neonMat.dispose()
       eyeMat.dispose()
