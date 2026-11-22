@@ -49,15 +49,20 @@ export default function ThreeFishSchool() {
 
     function createFishShape() {
       const s = new THREE.Shape()
-      s.moveTo(1.35, 0)
-      s.quadraticCurveTo(0.85, 0.52, 0.2, 0.48)
-      s.quadraticCurveTo(-0.45, 0.42, -0.85, 0.22)
-      s.lineTo(-1.45, 0.68)
-      s.lineTo(-1.05, 0.08)
-      s.lineTo(-1.45, -0.68)
-      s.lineTo(-0.85, -0.22)
-      s.quadraticCurveTo(-0.45, -0.42, 0.2, -0.48)
-      s.quadraticCurveTo(0.85, -0.52, 1.35, 0)
+      // Angelfish (скалярия): tall, diamond-shaped, high dorsal + anal fins
+      // Nose (pointed)
+      s.moveTo(0.7, 0)
+      // Steep rise into tall dorsal fin
+      s.quadraticCurveTo(0.35, 0.9, -0.1, 1.25)
+      s.quadraticCurveTo(-0.5, 1.15, -0.7, 0.6)
+      // Short tail relative to height
+      s.lineTo(-1.05, 0.4)
+      s.lineTo(-0.85, 0.05)
+      s.lineTo(-1.05, -0.4)
+      s.lineTo(-0.7, -0.6)
+      // Tall anal fin
+      s.quadraticCurveTo(-0.5, -1.15, -0.1, -1.25)
+      s.quadraticCurveTo(0.35, -0.9, 0.7, 0)
       return s
     }
 
