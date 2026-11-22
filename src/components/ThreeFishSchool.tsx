@@ -13,10 +13,13 @@ type FishData = {
   target: THREE.Vector3
   targetTimer: number
   prevDir: THREE.Vector3
-  personality: number      // 0 = straight, 1 = more wandering
+  personality: number
   preferredY: number
   cruiseTimer: number
   maneuvering: boolean
+  targetCooldown: number
+  mouseSensitivity: number
+  speedPhase: number
 }
 
 export default function ThreeFishSchool() {
@@ -178,6 +181,9 @@ export default function ThreeFishSchool() {
         preferredY: (Math.random() - 0.5) * 3.5,
         cruiseTimer: 1 + Math.random() * 3,
         maneuvering: false,
+        targetCooldown: 0,
+        mouseSensitivity: 0.4 + Math.random() * 0.8,
+        speedPhase: Math.random() * Math.PI * 2,
       })
     }
 
@@ -252,50 +258,55 @@ export default function ThreeFishSchool() {
       for (let i = 0; i < FISH_COUNT; i++) {
         const f = fishes[i]
 
-        // Smarter target selection
+        // Smarter, longer trajectories + cooldown
         f.targetTimer -= 0.016
         f.cruiseTimer -= 0.016
+        f.targetCooldown = Math.max(0, f.targetCooldown - 0.016)
 
         if (f.cruiseTimer <= 0) {
-          f.maneuvering = Math.random() < 0.35
-          f.cruiseTimer = f.maneuvering ? 0.8 + Math.random() * 1.2 : 2.5 + Math.random() * 4
+          // Rare maneuvers
+          f.maneuvering = Math.random() < 0.22
+          f.cruiseTimer = f.maneuvering ? 0.7 + Math.random() * 1.0 : 3.5 + Math.random() * 5
         }
 
-        if (f.targetTimer <= 0 || f.position.distanceTo(f.target) < 1.4) {
+        const canChangeTarget = f.targetCooldown <= 0 && (f.targetTimer <= 0 || f.position.distanceTo(f.target) < 1.6)
+        if (canChangeTarget) {
           const dir = f.prevDir.clone()
-          // Prefer continuing roughly forward
-          const forwardBias = dir.multiplyScalar(4 + Math.random() * 3)
-          let newTarget = f.position.clone().add(forwardBias)
+          // Prefer long forward targets
+          const dist = 6 + Math.random() * 5
+          let newTarget = f.position.clone().add(dir.multiplyScalar(dist))
 
-          // Sometimes pick a zone or another fish
-          if (Math.random() < 0.3) {
-            // Zone preference
+          // Sometimes zone or follow another fish loosely
+          if (Math.random() < 0.25) {
             const zones = [
-              new THREE.Vector3(-6, f.preferredY, 0),
-              new THREE.Vector3(6, f.preferredY, 0),
-              new THREE.Vector3(0, f.preferredY + 1.5, 1),
-              new THREE.Vector3(0, f.preferredY - 1.5, -1),
+              new THREE.Vector3(-7, f.preferredY, 0),
+              new THREE.Vector3(7, f.preferredY, 0),
+              new THREE.Vector3(0, f.preferredY + 1.2, 1),
+              new THREE.Vector3(0, f.preferredY - 1.2, -1),
             ]
             newTarget = zones[Math.floor(Math.random() * zones.length)].clone()
-            newTarget.x += (Math.random() - 0.5) * 3
-            newTarget.y += (Math.random() - 0.5) * 1.5
-          } else if (Math.random() < 0.15) {
-            // Interest in another fish at a distance
+            newTarget.x += (Math.random() - 0.5) * 2.5
+          } else if (Math.random() < 0.12) {
             const other = fishes[Math.floor(Math.random() * FISH_COUNT)]
             if (other !== f) {
-              newTarget = other.position.clone().add(
-                new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.5)
-              )
+              const followDir = other.prevDir.clone().multiplyScalar(2.2)
+              newTarget = other.position.clone().add(followDir)
             }
           }
 
-          // Clamp to aquarium
-          newTarget.x = Math.max(-8, Math.min(8, newTarget.x))
-          newTarget.y = Math.max(-3.5, Math.min(3.5, newTarget.y))
-          newTarget.z = Math.max(-4, Math.min(4, newTarget.z))
+          // Penalize sharp turns: if angle > ~90°, bias toward current dir
+          const toNew = newTarget.clone().sub(f.position).normalize()
+          if (f.prevDir.dot(toNew) < 0.15) {
+            newTarget = f.position.clone().add(f.prevDir.clone().multiplyScalar(5 + Math.random() * 3))
+          }
+
+          newTarget.x = Math.max(-8.5, Math.min(8.5, newTarget.x))
+          newTarget.y = Math.max(-3.8, Math.min(3.8, newTarget.y))
+          newTarget.z = Math.max(-4.2, Math.min(4.2, newTarget.z))
 
           f.target.copy(newTarget)
-          f.targetTimer = 2.5 + Math.random() * 4 + f.personality * 2
+          f.targetTimer = 4 + Math.random() * 5 + (1 - f.personality) * 2
+          f.targetCooldown = 1.8 + Math.random() * 1.5
         }
 
         const sep = new THREE.Vector3()
@@ -352,26 +363,22 @@ export default function ThreeFishSchool() {
           acc.add(toTarget)
         }
 
-        // Layered mouse: close flee, medium diverge, rare interest
+        // Layered mouse with per-fish sensitivity
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
           const md = toM.length()
-          if (md < 7 && md > 0.2) {
-            if (md < 3.2) {
-              // Strong avoid
-              const avoid = toM.normalize().multiplyScalar(maxSpd * 1.5).sub(f.velocity)
-              avoid.clampLength(0, maxF * 1.8)
+          const sens = f.mouseSensitivity
+          const closeR = 2.6 + (1 - sens) * 1.2
+          const midR = 4.8 + (1 - sens) * 1.5
+          if (md < midR + 1.5 && md > 0.2) {
+            if (md < closeR) {
+              const avoid = toM.normalize().multiplyScalar(maxSpd * 1.3 * sens).sub(f.velocity)
+              avoid.clampLength(0, maxF * 1.5 * sens)
               acc.add(avoid)
-            } else if (md < 5.5) {
-              // Gentle diverge
-              const diverge = toM.normalize().multiplyScalar(maxSpd * 0.4).sub(f.velocity)
-              diverge.clampLength(0, maxF * 0.5)
+            } else if (md < midR) {
+              const diverge = toM.normalize().multiplyScalar(maxSpd * 0.28 * sens).sub(f.velocity)
+              diverge.clampLength(0, maxF * 0.35 * sens)
               acc.add(diverge)
-            } else if (Math.random() < 0.002 && f.personality > 0.6) {
-              // Rare curiosity
-              const interest = mouseWorld.clone().sub(f.position).normalize().multiplyScalar(maxSpd * 0.3)
-              interest.clampLength(0, maxF * 0.3)
-              acc.add(interest)
             }
           }
         }
@@ -383,9 +390,9 @@ export default function ThreeFishSchool() {
         if (Math.abs(f.position.z) > 4.2) wallForce.z = -Math.sign(f.position.z) * 0.009
         acc.add(wallForce)
 
-        // Preferred height pull
+        // Stronger vertical layer preference
         const yDiff = f.preferredY - f.position.y
-        acc.y += yDiff * 0.0015
+        acc.y += yDiff * 0.0045
 
         // Gentle centering
         acc.add(f.position.clone().multiplyScalar(-0.0005))
@@ -410,12 +417,14 @@ export default function ThreeFishSchool() {
         f.velocity.copy(blended).multiplyScalar(spd)
         f.prevDir.copy(blended)
 
-        // Situational speed
-        let targetSpeed = maxSpd * (0.75 + f.speed * 0.4)
-        if (f.maneuvering) targetSpeed *= 1.15
-        if (mouse.x < 10 && f.position.distanceTo(mouseWorld) < 3.5) targetSpeed *= 1.2
-        if (!f.maneuvering && count === 0) targetSpeed *= 0.85
-        f.velocity.clampLength(0.08, targetSpeed)
+        // Situational speed + light breathing
+        let targetSpeed = maxSpd * (0.62 + f.speed * 0.35)
+        if (f.maneuvering) targetSpeed *= 1.28
+        if (mouse.x < 10 && f.position.distanceTo(mouseWorld) < 3.2) targetSpeed *= 1.22
+        if (!f.maneuvering && count === 0) targetSpeed *= 0.78
+        // Breathing
+        targetSpeed *= 1.0 + Math.sin(time * 0.9 + f.speedPhase) * 0.06
+        f.velocity.clampLength(0.07, targetSpeed)
 
         f.position.add(f.velocity.clone().multiplyScalar(0.18))
 
