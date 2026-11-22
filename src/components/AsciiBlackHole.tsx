@@ -20,7 +20,7 @@ export default function AsciiBlackHole() {
       0.1,
       60
     )
-    camera.position.set(0, 9.5, 16)
+    camera.position.set(0.5, 4.8, 15)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -124,6 +124,25 @@ export default function AsciiBlackHole() {
     const disk = new THREE.Mesh(diskGeo, diskMat)
     disk.rotation.x = -Math.PI / 2.55
     scene.add(disk)
+
+    // Lensed "bagel" arcs — light from the far side of the disk bent over/under
+    function makeBentArc(isTop: boolean) {
+      const geo = new THREE.RingGeometry(2.2, 6.8, 80, 6, Math.PI * 0.15, Math.PI * 0.7)
+      const mat = diskMat.clone()
+      const mesh = new THREE.Mesh(geo, mat)
+      if (isTop) {
+        mesh.rotation.x = -0.55
+        mesh.position.set(0, 0.8, -1.2)
+      } else {
+        mesh.rotation.x = Math.PI + 0.55
+        mesh.position.set(0, -0.8, 1.2)
+      }
+      mesh.scale.set(1, 0.65, 1)
+      scene.add(mesh)
+      return mesh
+    }
+    const arcTop = makeBentArc(true)
+    const arcBot = makeBentArc(false)
 
     // Secondary outer faint disk
     const outerGeo = new THREE.RingGeometry(5.5, 9.5, 64, 4)
@@ -299,7 +318,7 @@ export default function AsciiBlackHole() {
       sparkGeo.attributes.position.needsUpdate = true
 
       camera.position.x = Math.sin(time * 0.05) * 1.6
-      camera.position.y = 9.2 + Math.sin(time * 0.03) * 0.4
+      camera.position.y = 4.6 + Math.sin(time * 0.03) * 0.3
       camera.lookAt(0, 0, 0)
 
       renderer.render(scene, camera)
