@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 
 const menuItems = [
   { label: "Jellyfish", href: "#jellyfish" },
+  { label: "Fish", href: "#fish" },
   { label: "Black Hole", href: "#blackhole" },
   { label: "Frogs", href: "#frogs" },
   { label: "Snow", href: "#snow" },
