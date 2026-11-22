@@ -139,7 +139,7 @@ export default function ThreeFishSchool() {
       opacity: 0.85,
     })
 
-    const FISH_COUNT = 42
+    const FISH_COUNT = 38
     const fishes: FishData[] = []
 
     for (let i = 0; i < FISH_COUNT; i++) {
