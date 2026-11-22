@@ -49,21 +49,20 @@ export default function ThreeFishSchool() {
 
     function createFishShape() {
       const s = new THREE.Shape()
-      // Simple fish: big triangle body + smaller triangle tail
-      // Body (larger triangle)
-      s.moveTo(1.1, 0)          // nose
-      s.lineTo(-0.35, 0.55)     // upper body
-      s.lineTo(-0.35, -0.55)    // lower body
+      // Longer base, same height
+      s.moveTo(1.55, 0)          // nose further out
+      s.lineTo(-0.55, 0.55)      // upper — height same
+      s.lineTo(-0.55, -0.55)     // lower — height same
       s.closePath()
       return s
     }
 
     function createTailShape() {
       const s = new THREE.Shape()
-      // Smaller tail triangle
-      s.moveTo(-0.25, 0)
-      s.lineTo(-1.15, 0.42)
-      s.lineTo(-1.15, -0.42)
+      // Longer base, same height
+      s.moveTo(-0.4, 0)
+      s.lineTo(-1.55, 0.42)      // further back, height same
+      s.lineTo(-1.55, -0.42)
       s.closePath()
       return s
     }
