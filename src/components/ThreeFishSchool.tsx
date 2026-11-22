@@ -251,7 +251,7 @@ export default function ThreeFishSchool() {
     const maxF = 0.007
     const neighborDist = 2.6
     const separationDist = 1.3
-    const damping = 0.982
+    const damping = 0.992
     const maxTurn = 0.045 // radians per frame approx via velocity blend
 
     const animate = () => {
@@ -418,9 +418,9 @@ export default function ThreeFishSchool() {
         f.velocity.add(acc)
         f.velocity.multiplyScalar(damping)
 
-        // Limit turn rate
+        // Strong body inertia — wider arcs, resists sharp turns
         const desiredDir = f.velocity.clone().normalize()
-        const turnLerp = f.maneuvering ? 0.18 : 0.08
+        const turnLerp = f.maneuvering ? 0.09 : 0.035
         const blended = f.prevDir.clone().lerp(desiredDir, turnLerp).normalize()
         const spd = f.velocity.length()
         f.velocity.copy(blended).multiplyScalar(spd)
