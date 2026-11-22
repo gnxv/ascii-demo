@@ -43,10 +43,7 @@ export default function AsciiBlackHole() {
         // Keplerian disk sample
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
-          // Far side (z > 0) rendered wider so the bent arcs don't pinch
-          float far = smoothstep(-1.0, 2.0, hit.z);
-          float outer = mix(8.0, 14.0, far);
-          if (r < 1.6 || r > outer) return vec3(0.0);
+          if (r < 1.6 || r > 8.0) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
           // Keplerian: omega ~ r^-1.5
@@ -73,7 +70,7 @@ export default function AsciiBlackHole() {
           doppler = clamp(doppler, 0.3, 2.2);
 
           float intensity = (0.35 + flow * 0.85) * doppler;
-          intensity *= smoothstep(1.6, 2.2, r) * smoothstep(outer, outer * 0.8, r);
+          intensity *= smoothstep(1.6, 2.2, r) * smoothstep(8.0, 6.5, r);
 
           return col * intensity;
         }
@@ -98,8 +95,8 @@ export default function AsciiBlackHole() {
             if (r < 1.05) break; // captured
 
             // Deflection toward center (approx Schwarzschild)
-            vec3 acc = -1.8 * pos / pow(r, 4.0);
-            vel += acc * 0.4;
+            vec3 acc = -1.5 * pos / pow(r, 4.0);
+            vel += acc * 0.35;
             vel = normalize(vel) * length(rd);
 
             vec3 next = pos + vel * 0.28;
