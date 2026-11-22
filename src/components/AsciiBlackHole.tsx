@@ -148,32 +148,59 @@ export default function AsciiBlackHole() {
 
     // Jets — thinner, brighter core
     function makeJet(up: boolean) {
-      // Narrow near the black hole, wider far away, soft edges
-      const geo = new THREE.CylinderGeometry(0.85, 0.03, 7.0, 32, 1, true)
+      // Turbulent plasma jet: knots, helical twist, internal structure
+      const geo = new THREE.CylinderGeometry(0.9, 0.04, 7.5, 48, 24, true)
       const mat = new THREE.ShaderMaterial({
         uniforms: { uTime: { value: 0 } },
         vertexShader: /* glsl */ `
+          uniform float uTime;
           varying vec3 vPos;
+          varying float vAlong;
           void main() {
-            vPos = position;
-            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+            vec3 pos = position;
+            float along = (pos.y + 3.75) / 7.5; // 0 at base, 1 at tip
+            vAlong = along;
+
+            // Helical displacement
+            float helix = along * 6.28 * 1.5 + uTime * 1.8;
+            float amp = 0.08 * along;
+            pos.x += cos(helix) * amp;
+            pos.z += sin(helix) * amp;
+
+            // Knot-like bulges
+            float knots = sin(along * 18.0 - uTime * 3.5) * 0.06 * along;
+            pos.xz *= 1.0 + knots;
+
+            vPos = pos;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
           }
         `,
         fragmentShader: /* glsl */ `
           uniform float uTime;
           varying vec3 vPos;
+          varying float vAlong;
+
           void main() {
-            float y = vPos.y;
             float radial = length(vPos.xz);
-            // Soft gaussian falloff from axis
-            float soft = exp(-pow(radial * 3.5, 2.0));
-            // Fade along length
-            float along = smoothstep(3.5, 0.4, abs(y));
-            float pulse = 0.7 + 0.3 * sin(uTime * 2.2 + y * 1.1);
-            vec3 core = vec3(1.0, 0.96, 0.8);
-            vec3 outer = vec3(0.3, 0.55, 1.0);
-            vec3 col = mix(outer, core, soft) * pulse;
-            gl_FragColor = vec4(col, soft * along * 0.75);
+            float soft = exp(-pow(radial * (4.0 - vAlong * 1.5), 2.0));
+
+            // Internal turbulence / shocks
+            float turb = sin(vAlong * 22.0 - uTime * 4.0 + radial * 8.0);
+            turb = 0.65 + 0.35 * turb;
+            float shocks = smoothstep(0.4, 0.9, sin(vAlong * 9.0 - uTime * 2.5));
+
+            // Fade
+            float alongFade = smoothstep(0.0, 0.15, vAlong) * smoothstep(1.0, 0.75, vAlong);
+
+            vec3 core = vec3(1.0, 0.95, 0.7);
+            vec3 mid = vec3(0.5, 0.75, 1.0);
+            vec3 edge = vec3(0.2, 0.35, 0.8);
+            vec3 col = mix(edge, mid, soft);
+            col = mix(col, core, soft * soft * (0.6 + shocks * 0.4));
+            col *= turb;
+
+            float alpha = soft * alongFade * (0.45 + shocks * 0.35);
+            gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.85));
           }
         `,
         transparent: true,
@@ -182,7 +209,7 @@ export default function AsciiBlackHole() {
         depthWrite: false,
       })
       const mesh = new THREE.Mesh(geo, mat)
-      mesh.position.y = up ? 3.8 : -3.8
+      mesh.position.y = up ? 4.0 : -4.0
       if (!up) mesh.rotation.x = Math.PI
       scene.add(mesh)
       return { mesh, mat }
