@@ -81,7 +81,7 @@ export default function ThreeFishSchool() {
 
     const bodyGeo = new THREE.ShapeGeometry(createFishShape(), 1)
     const tailGeo = new THREE.ShapeGeometry(createTailShape(), 1)
-    const eyeGeo = new THREE.CircleGeometry(0.09, 10)
+    const eyeGeo = new THREE.CircleGeometry(0.065, 8)
 
     const neonMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
@@ -158,7 +158,7 @@ export default function ThreeFishSchool() {
       opacity: 0.85,
     })
 
-    const FISH_COUNT = 38
+    const FISH_COUNT = 28
     const fishes: FishData[] = []
 
     for (let i = 0; i < FISH_COUNT; i++) {
@@ -450,11 +450,14 @@ export default function ThreeFishSchool() {
         bodyMesh.setMatrixAt(i, dummy.matrix)
         tailMesh.setMatrixAt(i, dummy.matrix)
 
-        const eyeOffset = dir.clone().multiplyScalar(0.72 * f.size)
+        // Eye: near the front, slightly above centerline so it reads as an eye
+        const eyeOffset = dir.clone().multiplyScalar(0.48 * f.size)
+        const side = new THREE.Vector3(-dir.y, dir.x, 0).normalize()
+        eyeOffset.add(side.multiplyScalar(0.18 * f.size))
         eyeDummy.position.copy(f.position).add(eyeOffset)
         eyeDummy.lookAt(f.position.clone().add(dir))
         eyeDummy.rotateY(Math.PI)
-        eyeDummy.scale.setScalar(f.size * 0.9)
+        eyeDummy.scale.setScalar(f.size * 1.05)
         eyeDummy.updateMatrix()
         eyeMesh.setMatrixAt(i, eyeDummy.matrix)
       }
