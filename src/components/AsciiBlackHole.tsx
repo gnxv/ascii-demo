@@ -116,15 +116,6 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          // Photon ring approximation
-          float impact = length(uv);
-          float pr = abs(impact - 0.42);
-          float photon = exp(-pr * pr * 90.0) * 0.6;
-          col += vec3(1.0, 0.75, 0.4) * photon * (1.0 - alpha);
-
-          // Shadow
-          if (length(uv) < 0.38) col *= 0.05;
-
           gl_FragColor = vec4(col, 1.0);
         }
       `,
