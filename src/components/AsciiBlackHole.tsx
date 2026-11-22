@@ -11,15 +11,16 @@ export default function AsciiBlackHole() {
     if (!container) return
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x000000)
+    scene.background = new THREE.Color(0x010204)
+    scene.fog = new THREE.FogExp2(0x010204, 0.012)
 
     const camera = new THREE.PerspectiveCamera(
-      42,
+      38,
       container.clientWidth / container.clientHeight,
       0.1,
-      50
+      60
     )
-    camera.position.set(0, 1.2, 14)
+    camera.position.set(0, 2.4, 16)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -29,64 +30,79 @@ export default function AsciiBlackHole() {
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
+    // Soft ambient
+    scene.add(new THREE.AmbientLight(0x111122, 0.4))
+
     // Event horizon
     const horizon = new THREE.Mesh(
-      new THREE.SphereGeometry(1.15, 32, 32),
+      new THREE.SphereGeometry(1.05, 48, 48),
       new THREE.MeshBasicMaterial({ color: 0x000000 })
     )
     scene.add(horizon)
 
-    // Photon ring
-    const ringGeo = new THREE.RingGeometry(1.28, 1.42, 64)
-    const ringMat = new THREE.MeshBasicMaterial({
-      color: 0xffe0a0,
+    // Photon ring (thin bright)
+    const photonGeo = new THREE.RingGeometry(1.12, 1.22, 96)
+    const photonMat = new THREE.MeshBasicMaterial({
+      color: 0xfff4d0,
       side: THREE.DoubleSide,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.95,
       blending: THREE.AdditiveBlending,
     })
-    const photonRing = new THREE.Mesh(ringGeo, ringMat)
-    photonRing.rotation.x = Math.PI / 2.4
-    scene.add(photonRing)
+    const photon = new THREE.Mesh(photonGeo, photonMat)
+    photon.rotation.x = -Math.PI / 2.6
+    scene.add(photon)
 
-    // Accretion disk
-    const diskGeo = new THREE.RingGeometry(1.6, 5.8, 96, 8)
+    // Main accretion disk — better shader
+    const diskGeo = new THREE.RingGeometry(1.45, 7.2, 128, 16)
     const diskMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
       vertexShader: /* glsl */ `
         varying vec2 vUv;
-        varying float vRadius;
+        varying vec3 vPos;
+        varying float vR;
         void main() {
           vUv = uv;
           vec3 pos = position;
           float r = length(pos.xy);
-          vRadius = r;
-          // slight warp
-          pos.z += sin(r * 1.8 + uv.x * 6.28) * 0.12;
+          vR = r;
+          // gentle vertical warp for depth
+          pos.z += sin(atan(pos.y, pos.x) * 2.0 + r * 0.4) * 0.08 * smoothstep(1.5, 4.0, r);
+          vPos = pos;
           gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
         }
       `,
       fragmentShader: /* glsl */ `
         uniform float uTime;
         varying vec2 vUv;
-        varying float vRadius;
+        varying vec3 vPos;
+        varying float vR;
 
         void main() {
-          float r = vRadius;
-          float angle = atan(vUv.y - 0.5, vUv.x - 0.5);
-          float spin = uTime * 1.4;
+          float r = vR;
+          float ang = atan(vPos.y, vPos.x);
+          float spin = uTime * 0.85;
 
-          // Doppler-ish brightness
-          float doppler = 0.65 + 0.35 * sin(angle + spin);
+          // Keplerian-ish brightness + Doppler
+          float doppler = 0.55 + 0.45 * sin(ang + spin * 1.6);
+          float turbulence = 0.7 + 0.3 * sin(r * 6.5 - spin * 3.2 + ang * 4.0);
+          turbulence *= 0.85 + 0.15 * sin(r * 14.0 - spin * 5.0);
 
-          // Color: hot white-yellow near center -> orange -> red
-          vec3 col = mix(vec3(1.0, 0.95, 0.7), vec3(1.0, 0.45, 0.1), smoothstep(1.8, 4.2, r));
-          col = mix(col, vec3(0.8, 0.15, 0.05), smoothstep(3.8, 5.6, r));
+          // Temperature gradient
+          vec3 hot = vec3(1.0, 0.97, 0.85);
+          vec3 mid = vec3(1.0, 0.55, 0.15);
+          vec3 cool = vec3(0.7, 0.12, 0.04);
+          vec3 col = mix(hot, mid, smoothstep(1.6, 3.4, r));
+          col = mix(col, cool, smoothstep(3.2, 6.5, r));
 
-          float bands = 0.75 + 0.25 * sin(r * 8.0 - spin * 2.0 + angle * 3.0);
-          float alpha = smoothstep(5.8, 4.5, r) * smoothstep(1.55, 2.1, r) * doppler * bands;
+          float innerFade = smoothstep(1.4, 1.9, r);
+          float outerFade = smoothstep(7.2, 5.4, r);
+          float alpha = innerFade * outerFade * doppler * turbulence;
 
-          gl_FragColor = vec4(col * (0.6 + doppler * 0.8), alpha * 0.85);
+          // brighter approaching side
+          col *= 0.55 + doppler * 0.9;
+
+          gl_FragColor = vec4(col, clamp(alpha, 0.0, 0.92));
         }
       `,
       transparent: true,
@@ -95,67 +111,114 @@ export default function AsciiBlackHole() {
       depthWrite: false,
     })
     const disk = new THREE.Mesh(diskGeo, diskMat)
-    disk.rotation.x = Math.PI / 2.35
+    disk.rotation.x = -Math.PI / 2.55
     scene.add(disk)
 
-    // Jets
-    const jetGeo = new THREE.ConeGeometry(0.35, 4.2, 12, 1, true)
-    const jetMat = new THREE.ShaderMaterial({
+    // Secondary outer faint disk
+    const outerGeo = new THREE.RingGeometry(5.5, 9.5, 64, 4)
+    const outerMat = new THREE.MeshBasicMaterial({
+      color: 0x441100,
+      transparent: true,
+      opacity: 0.18,
+      blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+    })
+    const outerDisk = new THREE.Mesh(outerGeo, outerMat)
+    outerDisk.rotation.x = -Math.PI / 2.55
+    scene.add(outerDisk)
+
+    // Jets — thinner, brighter core
+    function makeJet(up: boolean) {
+      const geo = new THREE.CylinderGeometry(0.06, 0.28, 5.5, 16, 1, true)
+      const mat = new THREE.ShaderMaterial({
+        uniforms: { uTime: { value: 0 } },
+        vertexShader: /* glsl */ `
+          varying float vY;
+          void main() {
+            vY = position.y;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          uniform float uTime;
+          varying float vY;
+          void main() {
+            float pulse = 0.55 + 0.45 * sin(uTime * 4.0 + vY * 1.8);
+            float core = smoothstep(0.35, 0.0, abs(vY) * 0.15);
+            float fade = smoothstep(2.6, -2.2, vY);
+            vec3 col = mix(vec3(0.4, 0.7, 1.0), vec3(1.0, 0.95, 0.8), core) * pulse;
+            gl_FragColor = vec4(col, fade * 0.65);
+          }
+        `,
+        transparent: true,
+        blending: THREE.AdditiveBlending,
+        side: THREE.DoubleSide,
+        depthWrite: false,
+      })
+      const mesh = new THREE.Mesh(geo, mat)
+      mesh.position.y = up ? 3.2 : -3.2
+      if (!up) mesh.rotation.x = Math.PI
+      scene.add(mesh)
+      return { mesh, mat }
+    }
+    const jetUp = makeJet(true)
+    const jetDown = makeJet(false)
+
+    // Corona / glow around horizon
+    const coronaGeo = new THREE.SphereGeometry(1.35, 32, 32)
+    const coronaMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
       vertexShader: /* glsl */ `
-        varying float vY;
+        varying vec3 vNormal;
         void main() {
-          vY = position.y;
+          vNormal = normalize(normalMatrix * normal);
           gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
         }
       `,
       fragmentShader: /* glsl */ `
         uniform float uTime;
-        varying float vY;
+        varying vec3 vNormal;
         void main() {
-          float pulse = 0.6 + 0.4 * sin(uTime * 3.0 + vY * 2.0);
-          float fade = smoothstep(2.1, -1.8, vY);
-          vec3 col = vec3(0.6, 0.85, 1.0) * pulse;
-          gl_FragColor = vec4(col, fade * 0.55);
+          float fres = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.2);
+          float pulse = 0.7 + 0.3 * sin(uTime * 1.5);
+          vec3 col = vec3(1.0, 0.75, 0.35) * fres * pulse;
+          gl_FragColor = vec4(col, fres * 0.55);
         }
       `,
       transparent: true,
       blending: THREE.AdditiveBlending,
-      side: THREE.DoubleSide,
+      side: THREE.BackSide,
       depthWrite: false,
     })
-    const jetUp = new THREE.Mesh(jetGeo, jetMat)
-    jetUp.position.y = 2.4
-    scene.add(jetUp)
-    const jetDown = new THREE.Mesh(jetGeo, jetMat)
-    jetDown.position.y = -2.4
-    jetDown.rotation.x = Math.PI
-    scene.add(jetDown)
+    const corona = new THREE.Mesh(coronaGeo, coronaMat)
+    scene.add(corona)
 
-    // Infalling particles
-    const PARTICLE_COUNT = 80
-    const particles: { angle: number; radius: number; speed: number; y: number }[] = []
-    const pPositions = new Float32Array(PARTICLE_COUNT * 3)
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-      particles.push({
-        angle: Math.random() * Math.PI * 2,
-        radius: 2.2 + Math.random() * 3.5,
-        speed: 0.4 + Math.random() * 0.8,
-        y: (Math.random() - 0.5) * 0.6,
+    // Infalling sparks
+    const N = 120
+    const sparks: { a: number; r: number; spd: number; y: number; life: number }[] = []
+    const positions = new Float32Array(N * 3)
+    for (let i = 0; i < N; i++) {
+      sparks.push({
+        a: Math.random() * Math.PI * 2,
+        r: 1.8 + Math.random() * 4.5,
+        spd: 0.6 + Math.random() * 1.2,
+        y: (Math.random() - 0.5) * 0.4,
+        life: Math.random(),
       })
     }
-    const pGeo = new THREE.BufferGeometry()
-    pGeo.setAttribute('position', new THREE.BufferAttribute(pPositions, 3))
-    const pMat = new THREE.PointsMaterial({
-      color: 0xffcc88,
-      size: 0.08,
+    const sparkGeo = new THREE.BufferGeometry()
+    sparkGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const sparkMat = new THREE.PointsMaterial({
+      color: 0xffddaa,
+      size: 0.045,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.85,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
     })
-    const points = new THREE.Points(pGeo, pMat)
-    scene.add(points)
+    const sparkPoints = new THREE.Points(sparkGeo, sparkMat)
+    scene.add(sparkPoints)
 
     let time = 0
     let animId: number
@@ -165,27 +228,31 @@ export default function AsciiBlackHole() {
       time += 0.016
 
       diskMat.uniforms.uTime.value = time
-      jetMat.uniforms.uTime.value = time
+      coronaMat.uniforms.uTime.value = time
+      jetUp.mat.uniforms.uTime.value = time
+      jetDown.mat.uniforms.uTime.value = time
 
-      disk.rotation.z = time * 0.15
-      photonRing.rotation.z = time * 0.25
+      disk.rotation.z = time * 0.12
+      photon.rotation.z = time * 0.35
+      outerDisk.rotation.z = time * 0.06
 
-      // Update particles
-      for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const p = particles[i]
-        p.angle += p.speed * 0.02
-        p.radius -= 0.008 * p.speed
-        if (p.radius < 1.35) {
-          p.radius = 2.4 + Math.random() * 3.2
-          p.angle = Math.random() * Math.PI * 2
+      for (let i = 0; i < N; i++) {
+        const s = sparks[i]
+        s.a += s.spd * 0.018
+        s.r -= 0.012 * s.spd
+        if (s.r < 1.2) {
+          s.r = 2.0 + Math.random() * 4.8
+          s.a = Math.random() * Math.PI * 2
+          s.y = (Math.random() - 0.5) * 0.35
         }
-        pPositions[i * 3] = Math.cos(p.angle) * p.radius
-        pPositions[i * 3 + 1] = p.y + Math.sin(time + i) * 0.05
-        pPositions[i * 3 + 2] = Math.sin(p.angle) * p.radius * 0.35
+        positions[i * 3] = Math.cos(s.a) * s.r
+        positions[i * 3 + 1] = s.y
+        positions[i * 3 + 2] = Math.sin(s.a) * s.r * 0.28
       }
-      pGeo.attributes.position.needsUpdate = true
+      sparkGeo.attributes.position.needsUpdate = true
 
-      camera.position.x = Math.sin(time * 0.08) * 0.8
+      camera.position.x = Math.sin(time * 0.06) * 1.1
+      camera.position.y = 2.2 + Math.sin(time * 0.04) * 0.3
       camera.lookAt(0, 0, 0)
 
       renderer.render(scene, camera)
@@ -205,14 +272,16 @@ export default function AsciiBlackHole() {
       renderer.dispose()
       horizon.geometry.dispose()
       ;(horizon.material as THREE.Material).dispose()
-      ringGeo.dispose()
-      ringMat.dispose()
+      photonGeo.dispose()
+      photonMat.dispose()
       diskGeo.dispose()
       diskMat.dispose()
-      jetGeo.dispose()
-      jetMat.dispose()
-      pGeo.dispose()
-      pMat.dispose()
+      outerGeo.dispose()
+      outerMat.dispose()
+      coronaGeo.dispose()
+      coronaMat.dispose()
+      sparkGeo.dispose()
+      sparkMat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
@@ -227,7 +296,7 @@ export default function AsciiBlackHole() {
         height: '100%',
         position: 'absolute',
         inset: 0,
-        background: '#000',
+        background: '#010204',
       }}
     />
   )
