@@ -40,19 +40,14 @@ export default function ThreeFishSchool() {
 
     scene.add(new THREE.AmbientLight(0x0a1520, 0.3))
 
-    // --- Clear fish silhouette ---
     function createFishShape() {
       const s = new THREE.Shape()
-      // Nose
       s.moveTo(1.35, 0)
-      // Upper body
       s.quadraticCurveTo(0.85, 0.52, 0.2, 0.48)
       s.quadraticCurveTo(-0.45, 0.42, -0.85, 0.22)
-      // Tail upper
       s.lineTo(-1.45, 0.68)
       s.lineTo(-1.05, 0.08)
       s.lineTo(-1.45, -0.68)
-      // Tail lower
       s.lineTo(-0.85, -0.22)
       s.quadraticCurveTo(-0.45, -0.42, 0.2, -0.48)
       s.quadraticCurveTo(0.85, -0.52, 1.35, 0)
@@ -60,8 +55,6 @@ export default function ThreeFishSchool() {
     }
 
     const fishGeo = new THREE.ShapeGeometry(createFishShape(), 16)
-
-    // Eye as separate small geometry (will be instanced too)
     const eyeGeo = new THREE.CircleGeometry(0.09, 10)
 
     const neonMat = new THREE.ShaderMaterial({
@@ -85,12 +78,9 @@ export default function ThreeFishSchool() {
           vHue = aHue;
           vPhase = aPhase;
 
-          // Gentle tail wave (stronger at the back)
           float tailFactor = smoothstep(0.2, -1.2, along);
           float wave = sin(along * 3.8 + uTime * 4.2 + aPhase) * 0.28 * tailFactor;
           pos.y += wave;
-
-          // Very subtle body sway
           pos.y += sin(uTime * 1.6 + aPhase) * 0.03;
 
           vec4 mv = modelViewMatrix * instanceMatrix * vec4(pos * aSize, 1.0);
@@ -118,25 +108,15 @@ export default function ThreeFishSchool() {
 
         void main() {
           vec3 core = hsl2rgb(vHue, 1.0, 0.65);
-
-          // Body fill with soft falloff
           float body = smoothstep(0.55, 0.15, abs(vSide));
           body *= smoothstep(1.4, 0.3, abs(vAlong));
-
-          // Bright outline
           float outline = 0.0;
           outline += smoothstep(0.42, 0.5, abs(vSide)) * 0.8;
           outline += smoothstep(1.15, 1.35, abs(vAlong)) * 0.6;
-
-          // Tail accent
           float tail = smoothstep(-0.6, -1.3, vAlong);
-
           float pulse = 0.82 + 0.18 * sin(uTime * 2.4 + vPhase);
-
           vec3 col = core * (body * 0.55 + outline * 1.1 + tail * 0.3) * pulse;
-
           float alpha = clamp(body * 0.7 + outline * 0.95 + tail * 0.4, 0.0, 1.0);
-
           gl_FragColor = vec4(col, alpha);
         }
       `,
@@ -152,27 +132,27 @@ export default function ThreeFishSchool() {
       opacity: 0.85,
     })
 
-    const FISH_COUNT = 38
+    const FISH_COUNT = 36
     const fishes: FishData[] = []
 
     for (let i = 0; i < FISH_COUNT; i++) {
       const a = Math.random() * Math.PI * 2
-      const r = 0.8 + Math.random() * 4.8
+      const r = 1.0 + Math.random() * 4.2
       fishes.push({
         position: new THREE.Vector3(
           Math.cos(a) * r,
-          (Math.random() - 0.5) * 3.8,
-          Math.sin(a) * r * 0.55
+          (Math.random() - 0.5) * 3.2,
+          Math.sin(a) * r * 0.5
         ),
         velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.15,
-          (Math.random() - 0.5) * 0.04,
-          (Math.random() - 0.5) * 0.12
+          (Math.random() - 0.5) * 0.12,
+          (Math.random() - 0.5) * 0.03,
+          (Math.random() - 0.5) * 0.1
         ),
         phase: Math.random() * Math.PI * 2,
-        speed: 0.35 + Math.random() * 0.35,
-        size: 0.7 + Math.random() * 0.55,
-        hue: 0.48 + Math.random() * 0.22, // cyan → electric blue → violet
+        speed: 0.42 + Math.random() * 0.28,
+        size: 0.85 + Math.random() * 0.45,
+        hue: 0.48 + Math.random() * 0.22,
       })
     }
 
@@ -216,11 +196,13 @@ export default function ThreeFishSchool() {
     let time = 0
     let animId: number
 
-    // Much slower, calmer boids
-    const maxSpd = 0.55
-    const maxF = 0.012
-    const neigh = 2.8
-    const sepDist = 1.05
+    // Tuned from good boids examples (shoal, MiroFish, Nature of Code):
+    // Separation strongest, Alignment medium, Cohesion weakest.
+    // Separation distance ≈ 1.15 body lengths for comfortable spacing.
+    const maxSpd = 0.48
+    const maxF = 0.009
+    const neighborDist = 3.4
+    const separationDist = 1.35
 
     const animate = () => {
       animId = requestAnimationFrame(animate)
@@ -244,9 +226,11 @@ export default function ThreeFishSchool() {
           if (i === j) continue
           const o = fishes[j]
           const d = f.position.distanceTo(o.position)
-          if (d < neigh && d > 0.01) {
-            if (d < sepDist) {
-              sep.add(f.position.clone().sub(o.position).normalize().divideScalar(d))
+          if (d < neighborDist && d > 0.01) {
+            if (d < separationDist) {
+              // Stronger push when closer (1/d weighting)
+              const diff = f.position.clone().sub(o.position).normalize().divideScalar(Math.max(d, 0.15))
+              sep.add(diff)
             }
             ali.add(o.velocity)
             coh.add(o.position)
@@ -256,34 +240,44 @@ export default function ThreeFishSchool() {
 
         const acc = new THREE.Vector3()
         if (count > 0) {
-          sep.normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF * 1.4)
-          acc.add(sep)
-          ali.divideScalar(count).normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF * 0.8)
+          // Separation — strongest
+          if (sep.lengthSq() > 0) {
+            sep.normalize().multiplyScalar(maxSpd).sub(f.velocity)
+            sep.clampLength(0, maxF * 2.2)
+            acc.add(sep)
+          }
+          // Alignment — medium
+          ali.divideScalar(count).normalize().multiplyScalar(maxSpd).sub(f.velocity)
+          ali.clampLength(0, maxF * 1.1)
           acc.add(ali)
-          coh.divideScalar(count).sub(f.position).normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF * 0.45)
+          // Cohesion — weakest
+          coh.divideScalar(count).sub(f.position).normalize().multiplyScalar(maxSpd).sub(f.velocity)
+          coh.clampLength(0, maxF * 0.55)
           acc.add(coh)
         }
 
-        // Softer mouse avoidance
+        // Soft mouse avoidance
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
           const md = toM.length()
-          if (md < 3.8) {
-            toM.normalize().multiplyScalar(maxSpd * 1.1).sub(f.velocity).clampLength(0, maxF * 1.6)
+          if (md < 4.2) {
+            toM.normalize().multiplyScalar(maxSpd * 1.15).sub(f.velocity)
+            toM.clampLength(0, maxF * 1.8)
             acc.add(toM)
           }
         }
 
-        // Gentle centering
-        acc.add(f.position.clone().multiplyScalar(-0.0035))
+        // Gentle centering so the school doesn't drift away
+        acc.add(f.position.clone().multiplyScalar(-0.0028))
 
-        f.velocity.add(acc).clampLength(0.12, maxSpd * f.speed)
-        f.position.add(f.velocity.clone().multiplyScalar(0.28))
+        f.velocity.add(acc)
+        f.velocity.clampLength(0.18, maxSpd * f.speed)
+        f.position.add(f.velocity.clone().multiplyScalar(0.26))
 
         // Soft bounds
-        if (Math.abs(f.position.x) > 8.5) f.velocity.x *= -0.3
-        if (Math.abs(f.position.y) > 4.2) f.velocity.y *= -0.3
-        if (Math.abs(f.position.z) > 5.5) f.velocity.z *= -0.3
+        if (Math.abs(f.position.x) > 8.2) f.velocity.x *= -0.25
+        if (Math.abs(f.position.y) > 3.8) f.velocity.y *= -0.25
+        if (Math.abs(f.position.z) > 5.0) f.velocity.z *= -0.25
 
         const dir = f.velocity.clone().normalize()
         dummy.position.copy(f.position)
@@ -292,7 +286,6 @@ export default function ThreeFishSchool() {
         dummy.updateMatrix()
         bodyMesh.setMatrixAt(i, dummy.matrix)
 
-        // Eye position (near the head)
         const eyeOffset = dir.clone().multiplyScalar(0.72 * f.size)
         eyeDummy.position.copy(f.position).add(eyeOffset)
         eyeDummy.lookAt(f.position.clone().add(dir))
@@ -305,7 +298,7 @@ export default function ThreeFishSchool() {
       bodyMesh.instanceMatrix.needsUpdate = true
       eyeMesh.instanceMatrix.needsUpdate = true
 
-      camera.position.x = Math.sin(time * 0.06) * 0.6
+      camera.position.x = Math.sin(time * 0.05) * 0.5
       camera.lookAt(0, 0, 0)
 
       renderer.render(scene, camera)
