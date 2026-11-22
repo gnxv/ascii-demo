@@ -43,7 +43,7 @@ export default function AsciiBlackHole() {
         // Keplerian disk sample
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
-          if (r < 1.6 || r > 8.0) return vec3(0.0);
+          if (r < 1.5 || r > 12.0) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
           // Keplerian: omega ~ r^-1.5
@@ -70,16 +70,16 @@ export default function AsciiBlackHole() {
           doppler = clamp(doppler, 0.3, 2.2);
 
           float intensity = (0.35 + flow * 0.85) * doppler;
-          intensity *= smoothstep(1.6, 2.2, r) * smoothstep(8.0, 6.5, r);
+          intensity *= smoothstep(1.5, 2.0, r) * smoothstep(12.0, 9.0, r);
 
           return col * intensity;
         }
 
         void main() {
-          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.2;
+          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 1.85;
 
           // Camera slightly above disk plane, looking at origin
-          vec3 ro = vec3(0.0, 1.15, -14.0);
+          vec3 ro = vec3(0.0, 0.85, -11.0);
           vec3 rd = normalize(vec3(uv.x, uv.y - 0.05, 1.0));
 
           vec3 col = vec3(0.0);
@@ -88,18 +88,18 @@ export default function AsciiBlackHole() {
           // Simple ray march with gravitational deflection
           vec3 pos = ro;
           vec3 vel = rd;
-          const int STEPS = 64;
+          const int STEPS = 96;
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
             if (r < 1.05) break; // captured
 
             // Deflection toward center (approx Schwarzschild)
-            vec3 acc = -1.5 * pos / pow(r, 4.0);
-            vel += acc * 0.35;
+            vec3 acc = -2.4 * pos / pow(r, 4.0);
+            vel += acc * 0.5;
             vel = normalize(vel) * length(rd);
 
-            vec3 next = pos + vel * 0.28;
+            vec3 next = pos + vel * 0.22;
 
             // Plane crossing = disk hit
             if (pos.y * next.y < 0.0) {
