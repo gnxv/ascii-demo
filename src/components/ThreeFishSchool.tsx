@@ -195,12 +195,14 @@ export default function ThreeFishSchool() {
     let time = 0
     let animId: number
 
-    // Aquarium style: weak schooling, each fish mostly does its own thing.
-    // Strong separation so they don't pile up, mild alignment, very weak cohesion.
-    const maxSpd = 0.42
-    const maxF = 0.008
-    const neighborDist = 2.6
-    const separationDist = 1.1
+    // Aquarium style with smooth physics:
+    // Strong separation, weak alignment, almost no cohesion.
+    // Velocity damping + limited turn rate for natural motion.
+    const maxSpd = 0.38
+    const maxF = 0.0065
+    const neighborDist = 2.4
+    const separationDist = 1.25
+    const damping = 0.985
 
     const animate = () => {
       animId = requestAnimationFrame(animate)
@@ -244,38 +246,44 @@ export default function ThreeFishSchool() {
             sep.clampLength(0, maxF * 2.2)
             acc.add(sep)
           }
-          // Alignment — weak (aquarium fish don't perfectly sync)
+          // Alignment — very weak
           ali.divideScalar(count).normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          ali.clampLength(0, maxF * 0.45)
+          ali.clampLength(0, maxF * 0.3)
           acc.add(ali)
-          // Cohesion — very weak
+          // Cohesion — almost off (prevents clumping)
           coh.divideScalar(count).sub(f.position).normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          coh.clampLength(0, maxF * 0.18)
+          coh.clampLength(0, maxF * 0.08)
           acc.add(coh)
         }
 
-        // Soft mouse avoidance
+        // Soft mouse avoidance with smooth falloff (like shoal)
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
           const md = toM.length()
-          if (md < 4.2) {
-            toM.normalize().multiplyScalar(maxSpd * 1.15).sub(f.velocity)
-            toM.clampLength(0, maxF * 1.8)
+          if (md < 5.5 && md > 0.1) {
+            const strength = Math.pow(1 - md / 5.5, 1.6)
+            toM.normalize().multiplyScalar(maxSpd * strength * 1.4).sub(f.velocity)
+            toM.clampLength(0, maxF * 1.4 * strength)
             acc.add(toM)
           }
         }
 
-        // Very gentle centering — just keep them in the tank
-        acc.add(f.position.clone().multiplyScalar(-0.0012))
+        // Gentle centering
+        acc.add(f.position.clone().multiplyScalar(-0.0008))
 
-        // Mild random wander so each fish has its own "business"
-        acc.x += (Math.random() - 0.5) * 0.004
-        acc.y += (Math.random() - 0.5) * 0.002
-        acc.z += (Math.random() - 0.5) * 0.003
+        // Continuous smooth wander (sin-based, not random jitter)
+        const wander = new THREE.Vector3(
+          Math.sin(time * 0.7 + f.phase) * 0.0035,
+          Math.sin(time * 0.5 + f.phase * 1.3) * 0.0018,
+          Math.cos(time * 0.6 + f.phase * 0.8) * 0.0025
+        )
+        acc.add(wander)
 
+        // Apply acceleration with damping for smooth motion
         f.velocity.add(acc)
-        f.velocity.clampLength(0.18, maxSpd * f.speed)
-        f.position.add(f.velocity.clone().multiplyScalar(0.26))
+        f.velocity.multiplyScalar(damping)
+        f.velocity.clampLength(0.12, maxSpd * f.speed)
+        f.position.add(f.velocity.clone().multiplyScalar(0.22))
 
         // Soft aquarium bounds (whole screen)
         if (Math.abs(f.position.x) > 9.2) f.velocity.x *= -0.35
