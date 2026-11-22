@@ -13,116 +13,117 @@ export default function AsciiBlackHole() {
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x000000)
 
-    const camera = new THREE.PerspectiveCamera(
-      40,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      50
-    )
-    camera.position.set(0, 0, 12)
-
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: false,
       powerPreference: 'high-performance',
     })
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.5))
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25))
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
-    // Full-screen quad with Interstellar-style disk shader
-    const geo = new THREE.PlaneGeometry(18, 10)
+    const geo = new THREE.PlaneGeometry(2, 2)
     const mat = new THREE.ShaderMaterial({
-      uniforms: { uTime: { value: 0 } },
+      uniforms: {
+        uTime: { value: 0 },
+        uResolution: { value: new THREE.Vector2(container.clientWidth, container.clientHeight) },
+      },
       vertexShader: /* glsl */ `
         varying vec2 vUv;
         void main() {
           vUv = uv;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          gl_Position = vec4(position.xy, 0.0, 1.0);
         }
       `,
       fragmentShader: /* glsl */ `
         uniform float uTime;
+        uniform vec2 uResolution;
         varying vec2 vUv;
 
-        // Keplerian orbital flow: angular speed ~ r^(-1.5)
-        float orbitalPhase(float r, float ang) {
-          float safeR = max(r, 0.15);
-          float omega = 2.8 / pow(safeR, 1.5); // faster near center
-          return ang - uTime * omega;
-        }
+        // Keplerian disk sample
+        vec3 diskColor(vec3 hit, vec3 rayDir) {
+          float r = length(hit.xz);
+          if (r < 1.6 || r > 8.0) return vec3(0.0);
 
-        float rings(float r, float ang) {
-          float phase = orbitalPhase(r, ang);
-          // Spiral arms / density waves from differential rotation
-          float band = sin(phase * 3.0 + r * 12.0) * 0.5 + 0.5;
-          float fine = sin(phase * 7.0 + r * 22.0) * 0.5 + 0.5;
-          return mix(pow(band, 1.2), fine, 0.4);
+          float ang = atan(hit.z, hit.x);
+          // Keplerian: omega ~ r^-1.5
+          float omega = 3.2 / pow(r, 1.5);
+          float phase = ang - uTime * omega;
+
+          // Density waves from differential rotation
+          float bands = sin(phase * 4.0 + r * 6.0) * 0.5 + 0.5;
+          float fine = sin(phase * 9.0 + r * 14.0) * 0.5 + 0.5;
+          float flow = mix(pow(bands, 1.1), fine, 0.4);
+
+          // Temperature: hot inside, cooler outside
+          float t = smoothstep(8.0, 1.8, r);
+          vec3 hot = vec3(1.0, 0.85, 0.45);
+          vec3 mid = vec3(1.0, 0.4, 0.08);
+          vec3 cool = vec3(0.6, 0.05, 0.01);
+          vec3 col = mix(cool, mid, smoothstep(0.0, 0.5, t));
+          col = mix(col, hot, smoothstep(0.5, 1.0, t));
+
+          // Doppler: approaching side brighter
+          vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
+          float beta = 0.45 / sqrt(r);
+          float doppler = 1.0 + 1.8 * beta * dot(tangent, -rayDir);
+          doppler = clamp(doppler, 0.3, 2.2);
+
+          float intensity = (0.35 + flow * 0.85) * doppler;
+          intensity *= smoothstep(1.6, 2.2, r) * smoothstep(8.0, 6.5, r);
+
+          return col * intensity;
         }
 
         void main() {
-          vec2 uv = (vUv - 0.5) * vec2(1.8, 1.0);
-          float x = uv.x;
-          float y = uv.y;
+          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.2;
 
-          // Event horizon shadow (dark center)
-          float horizon = length(uv * vec2(1.0, 1.15));
-          float shadow = smoothstep(0.18, 0.26, horizon);
-
-          // --- Main equatorial disk (thin horizontal band) ---
-          float diskThick = 0.045;
-          float inDisk = smoothstep(diskThick, diskThick * 0.3, abs(y));
-          float rDisk = abs(x);
-          float diskRadial = smoothstep(0.28, 0.42, rDisk) * smoothstep(1.55, 1.15, rDisk);
-          float mainMask = inDisk * diskRadial;
-          float mainAng = atan(y * 2.0, x);
-          float mainFlow = rings(rDisk, mainAng);
-
-          // --- Upper lensed arc (smooth arch over the hole) ---
-          // Far side of disk bent upward
-          float archY = 0.38 - pow(abs(x) * 0.55, 2.0); // parabolic arch
-          float archDist = abs(y - archY);
-          float upperArc = smoothstep(0.12, 0.02, archDist);
-          upperArc *= smoothstep(0.9, 0.3, abs(x));
-          upperArc *= smoothstep(0.2, 0.35, y + 0.05); // only above center
-          float upperFlow = rings(0.5 + abs(x) * 0.6, atan(y - 0.2, x));
-
-          // --- Lower secondary (small ring under, not a fan) ---
-          float lowY = -0.32;
-          float lowR = length(vec2(x * 1.4, (y - lowY) * 2.2));
-          float lowerRing = smoothstep(0.22, 0.12, abs(lowR - 0.18));
-          lowerRing *= smoothstep(0.0, -0.08, y);
-          lowerRing *= smoothstep(0.7, 0.2, abs(x));
-          float lowerFlow = rings(lowR + 0.3, atan(y - lowY, x));
-
-          // Photon ring
-          float pr = abs(horizon - 0.24);
-          float photon = exp(-pr * pr * 220.0);
-
-          // Colors
-          vec3 hot = vec3(1.0, 0.72, 0.22);
-          vec3 mid = vec3(1.0, 0.32, 0.04);
-          vec3 cool = vec3(0.65, 0.06, 0.01);
+          // Camera slightly above disk plane, looking at origin
+          vec3 ro = vec3(0.0, 1.15, -14.0);
+          vec3 rd = normalize(vec3(uv.x, uv.y - 0.05, 1.0));
 
           vec3 col = vec3(0.0);
+          float alpha = 0.0;
 
-          // Main disk
-          col += mix(cool, hot, mainFlow) * mainMask * (0.5 + mainFlow * 0.7);
+          // Simple ray march with gravitational deflection
+          vec3 pos = ro;
+          vec3 vel = rd;
+          const int STEPS = 64;
 
-          // Upper arch
-          col += mix(mid, hot, upperFlow) * upperArc * (0.4 + upperFlow * 0.8);
+          for (int i = 0; i < STEPS; i++) {
+            float r = length(pos);
+            if (r < 1.05) break; // captured
 
-          // Lower small ring
-          col += mix(cool, mid, lowerFlow) * lowerRing * 0.6;
+            // Deflection toward center (approx Schwarzschild)
+            vec3 acc = -1.5 * pos / pow(r, 4.0);
+            vel += acc * 0.35;
+            vel = normalize(vel) * length(rd);
 
-          // Photon ring
-          col += vec3(1.0, 0.65, 0.25) * photon * 1.2;
+            vec3 next = pos + vel * 0.28;
 
-          // Dark center
-          col *= shadow;
+            // Plane crossing = disk hit
+            if (pos.y * next.y < 0.0) {
+              float t = pos.y / (pos.y - next.y);
+              vec3 hit = mix(pos, next, t);
+              vec3 dc = diskColor(hit, vel);
+              float a = clamp(length(dc) * 0.55, 0.0, 0.85);
+              col += (1.0 - alpha) * dc;
+              alpha += (1.0 - alpha) * a;
+              if (alpha > 0.95) break;
+            }
 
-          // Soft outer fade
-          float fade = smoothstep(1.5, 0.9, length(uv));
-          col *= fade;
+            pos = next;
+            if (r > 30.0) break;
+          }
+
+          // Photon ring approximation
+          float impact = length(uv);
+          float pr = abs(impact - 0.42);
+          float photon = exp(-pr * pr * 90.0) * 0.6;
+          col += vec3(1.0, 0.75, 0.4) * photon * (1.0 - alpha);
+
+          // Shadow
+          if (length(uv) < 0.38) col *= 0.05;
 
           gl_FragColor = vec4(col, 1.0);
         }
@@ -144,9 +145,10 @@ export default function AsciiBlackHole() {
     animate()
 
     const onResize = () => {
-      camera.aspect = container.clientWidth / container.clientHeight
-      camera.updateProjectionMatrix()
-      renderer.setSize(container.clientWidth, container.clientHeight)
+      const w = container.clientWidth
+      const h = container.clientHeight
+      renderer.setSize(w, h)
+      mat.uniforms.uResolution.value.set(w, h)
     }
     window.addEventListener('resize', onResize)
 
