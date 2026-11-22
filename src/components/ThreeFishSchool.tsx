@@ -372,22 +372,20 @@ export default function ThreeFishSchool() {
           acc.add(toTarget)
         }
 
-        // Layered mouse with per-fish sensitivity
+        // Mouse scatter: sharp avoid close, slow down while fleeing
+        let mouseFlee = 0
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
           const md = toM.length()
           const sens = f.mouseSensitivity
-          const closeR = 2.6 + (1 - sens) * 1.2
-          const midR = 4.8 + (1 - sens) * 1.5
-          if (md < midR + 1.5 && md > 0.2) {
-            if (md < closeR) {
-              const avoid = toM.normalize().multiplyScalar(maxSpd * 1.3 * sens).sub(f.velocity)
-              avoid.clampLength(0, maxF * 1.5 * sens)
+          if (md < 7.5 && md > 0.15) {
+            // Strength falls off with distance
+            const strength = Math.pow(Math.max(0, 1 - md / 7.5), 1.4) * sens
+            if (strength > 0.05) {
+              const avoid = toM.normalize().multiplyScalar(maxSpd * strength * 1.8).sub(f.velocity)
+              avoid.clampLength(0, maxF * 2.2 * strength)
               acc.add(avoid)
-            } else if (md < midR) {
-              const diverge = toM.normalize().multiplyScalar(maxSpd * 0.28 * sens).sub(f.velocity)
-              diverge.clampLength(0, maxF * 0.35 * sens)
-              acc.add(diverge)
+              mouseFlee = strength
             }
           }
         }
@@ -429,11 +427,14 @@ export default function ThreeFishSchool() {
         // Situational speed + light breathing
         let targetSpeed = maxSpd * (0.62 + f.speed * 0.35)
         if (f.maneuvering) targetSpeed *= 1.28
-        if (mouse.x < 10 && f.position.distanceTo(mouseWorld) < 3.2) targetSpeed *= 1.22
+        // Slow down while fleeing the cursor
+        if (mouseFlee > 0.1) {
+          targetSpeed *= 1.0 - mouseFlee * 0.55
+        }
         if (!f.maneuvering && count === 0) targetSpeed *= 0.78
         // Breathing
         targetSpeed *= 1.0 + Math.sin(time * 0.9 + f.speedPhase) * 0.06
-        f.velocity.clampLength(0.07, targetSpeed)
+        f.velocity.clampLength(0.05, Math.max(0.08, targetSpeed))
 
         f.position.add(f.velocity.clone().multiplyScalar(0.18))
 
