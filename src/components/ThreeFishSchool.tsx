@@ -20,15 +20,15 @@ export default function ThreeFishSchool() {
     if (!container) return
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x03060a)
+    scene.background = new THREE.Color(0x020408)
 
     const camera = new THREE.PerspectiveCamera(
-      40,
+      38,
       container.clientWidth / container.clientHeight,
       0.1,
-      50
+      40
     )
-    camera.position.set(0, 0, 14)
+    camera.position.set(0, 0, 16)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -38,69 +38,71 @@ export default function ThreeFishSchool() {
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
-    // Soft ambient for depth
-    scene.add(new THREE.AmbientLight(0x112233, 0.4))
+    scene.add(new THREE.AmbientLight(0x0a1520, 0.3))
 
-    // --- Neon fish shape (body + tail as one Shape) ---
+    // --- Clear fish silhouette ---
     function createFishShape() {
-      const shape = new THREE.Shape()
-      // Body
-      shape.moveTo(1.1, 0)
-      shape.quadraticCurveTo(0.6, 0.45, 0, 0.38)
-      shape.quadraticCurveTo(-0.7, 0.32, -1.05, 0.12)
-      // Tail fork
-      shape.lineTo(-1.55, 0.55)
-      shape.lineTo(-1.25, 0)
-      shape.lineTo(-1.55, -0.55)
-      shape.lineTo(-1.05, -0.12)
-      shape.quadraticCurveTo(-0.7, -0.32, 0, -0.38)
-      shape.quadraticCurveTo(0.6, -0.45, 1.1, 0)
-      return shape
+      const s = new THREE.Shape()
+      // Nose
+      s.moveTo(1.35, 0)
+      // Upper body
+      s.quadraticCurveTo(0.85, 0.52, 0.2, 0.48)
+      s.quadraticCurveTo(-0.45, 0.42, -0.85, 0.22)
+      // Tail upper
+      s.lineTo(-1.45, 0.68)
+      s.lineTo(-1.05, 0.08)
+      s.lineTo(-1.45, -0.68)
+      // Tail lower
+      s.lineTo(-0.85, -0.22)
+      s.quadraticCurveTo(-0.45, -0.42, 0.2, -0.48)
+      s.quadraticCurveTo(0.85, -0.52, 1.35, 0)
+      return s
     }
 
-    const fishShape = createFishShape()
-    const fishGeo = new THREE.ShapeGeometry(fishShape, 12)
+    const fishGeo = new THREE.ShapeGeometry(createFishShape(), 16)
 
-    // --- Neon shader ---
+    // Eye as separate small geometry (will be instanced too)
+    const eyeGeo = new THREE.CircleGeometry(0.09, 10)
+
     const neonMat = new THREE.ShaderMaterial({
-      uniforms: {
-        uTime: { value: 0 },
-      },
+      uniforms: { uTime: { value: 0 } },
       vertexShader: /* glsl */ `
         uniform float uTime;
         attribute float aPhase;
         attribute float aHue;
         attribute float aSize;
 
-        varying vec2 vUv;
         varying float vHue;
         varying float vPhase;
         varying float vAlong;
+        varying float vSide;
 
         void main() {
           vec3 pos = position;
           float along = position.x;
           vAlong = along;
+          vSide = position.y;
           vHue = aHue;
           vPhase = aPhase;
 
-          // Tail wave
-          float wave = sin(along * 4.5 + uTime * 6.5 + aPhase) * 0.22 * smoothstep(-0.3, 1.2, -along);
+          // Gentle tail wave (stronger at the back)
+          float tailFactor = smoothstep(0.2, -1.2, along);
+          float wave = sin(along * 3.8 + uTime * 4.2 + aPhase) * 0.28 * tailFactor;
           pos.y += wave;
 
-          // Slight body flex
-          pos.y += sin(uTime * 2.2 + aPhase) * 0.04 * (1.0 - abs(along));
+          // Very subtle body sway
+          pos.y += sin(uTime * 1.6 + aPhase) * 0.03;
 
           vec4 mv = modelViewMatrix * instanceMatrix * vec4(pos * aSize, 1.0);
           gl_Position = projectionMatrix * mv;
-
-          vUv = uv;
         }
       `,
       fragmentShader: /* glsl */ `
+        uniform float uTime;
         varying float vHue;
         varying float vPhase;
         varying float vAlong;
+        varying float vSide;
 
         vec3 hsl2rgb(float h, float s, float l) {
           float c = (1.0 - abs(2.0 * l - 1.0)) * s;
@@ -115,23 +117,27 @@ export default function ThreeFishSchool() {
         }
 
         void main() {
-          // Core bright color
-          vec3 core = hsl2rgb(vHue, 0.95, 0.62);
+          vec3 core = hsl2rgb(vHue, 1.0, 0.65);
 
-          // Edge glow (distance from center line)
-          float edge = abs(vAlong);
-          float glow = smoothstep(0.9, 0.2, edge);
+          // Body fill with soft falloff
+          float body = smoothstep(0.55, 0.15, abs(vSide));
+          body *= smoothstep(1.4, 0.3, abs(vAlong));
 
-          // Pulsing
-          float pulse = 0.75 + 0.25 * sin(uTime * 3.0 + vPhase);
+          // Bright outline
+          float outline = 0.0;
+          outline += smoothstep(0.42, 0.5, abs(vSide)) * 0.8;
+          outline += smoothstep(1.15, 1.35, abs(vAlong)) * 0.6;
 
-          vec3 col = core * glow * pulse;
+          // Tail accent
+          float tail = smoothstep(-0.6, -1.3, vAlong);
 
-          // Stronger outline feel
-          float outline = smoothstep(0.85, 1.05, abs(vAlong) * 0.7 + 0.3);
-          col += core * outline * 0.6;
+          float pulse = 0.82 + 0.18 * sin(uTime * 2.4 + vPhase);
 
-          gl_FragColor = vec4(col, glow * 0.95);
+          vec3 col = core * (body * 0.55 + outline * 1.1 + tail * 0.3) * pulse;
+
+          float alpha = clamp(body * 0.7 + outline * 0.95 + tail * 0.4, 0.0, 1.0);
+
+          gl_FragColor = vec4(col, alpha);
         }
       `,
       transparent: true,
@@ -140,33 +146,33 @@ export default function ThreeFishSchool() {
       side: THREE.DoubleSide,
     })
 
-    // Fix: uTime needs to be accessible in fragment too
-    neonMat.fragmentShader = neonMat.fragmentShader.replace(
-      'varying float vAlong;',
-      'varying float vAlong;\nuniform float uTime;'
-    )
+    const eyeMat = new THREE.MeshBasicMaterial({
+      color: 0x001122,
+      transparent: true,
+      opacity: 0.85,
+    })
 
-    const FISH_COUNT = 32
+    const FISH_COUNT = 38
     const fishes: FishData[] = []
 
     for (let i = 0; i < FISH_COUNT; i++) {
       const a = Math.random() * Math.PI * 2
-      const r = 1.2 + Math.random() * 5.5
+      const r = 0.8 + Math.random() * 4.8
       fishes.push({
         position: new THREE.Vector3(
           Math.cos(a) * r,
-          (Math.random() - 0.5) * 4.5,
-          Math.sin(a) * r * 0.6
+          (Math.random() - 0.5) * 3.8,
+          Math.sin(a) * r * 0.55
         ),
         velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.4,
-          (Math.random() - 0.5) * 0.08,
-          (Math.random() - 0.5) * 0.3
+          (Math.random() - 0.5) * 0.15,
+          (Math.random() - 0.5) * 0.04,
+          (Math.random() - 0.5) * 0.12
         ),
         phase: Math.random() * Math.PI * 2,
-        speed: 0.65 + Math.random() * 0.5,
-        size: 0.55 + Math.random() * 0.45,
-        hue: Math.random() * 0.25 + 0.48, // cyan → blue → purple range
+        speed: 0.35 + Math.random() * 0.35,
+        size: 0.7 + Math.random() * 0.55,
+        hue: 0.48 + Math.random() * 0.22, // cyan → electric blue → violet
       })
     }
 
@@ -183,11 +189,16 @@ export default function ThreeFishSchool() {
     fishGeo.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
     fishGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
 
-    const mesh = new THREE.InstancedMesh(fishGeo, neonMat, FISH_COUNT)
-    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    scene.add(mesh)
+    const bodyMesh = new THREE.InstancedMesh(fishGeo, neonMat, FISH_COUNT)
+    bodyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(bodyMesh)
+
+    const eyeMesh = new THREE.InstancedMesh(eyeGeo, eyeMat, FISH_COUNT)
+    eyeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(eyeMesh)
 
     const dummy = new THREE.Object3D()
+    const eyeDummy = new THREE.Object3D()
     const mouse = new THREE.Vector2(999, 999)
     const mouseWorld = new THREE.Vector3()
 
@@ -205,10 +216,11 @@ export default function ThreeFishSchool() {
     let time = 0
     let animId: number
 
-    const maxSpd = 1.15
-    const maxF = 0.028
-    const neigh = 3.0
-    const sepDist = 1.1
+    // Much slower, calmer boids
+    const maxSpd = 0.55
+    const maxF = 0.012
+    const neigh = 2.8
+    const sepDist = 1.05
 
     const animate = () => {
       animId = requestAnimationFrame(animate)
@@ -244,42 +256,56 @@ export default function ThreeFishSchool() {
 
         const acc = new THREE.Vector3()
         if (count > 0) {
-          sep.normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF * 1.5)
+          sep.normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF * 1.4)
           acc.add(sep)
-          ali.divideScalar(count).normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF)
+          ali.divideScalar(count).normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF * 0.8)
           acc.add(ali)
-          coh.divideScalar(count).sub(f.position).normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF * 0.55)
+          coh.divideScalar(count).sub(f.position).normalize().multiplyScalar(maxSpd).sub(f.velocity).clampLength(0, maxF * 0.45)
           acc.add(coh)
         }
 
+        // Softer mouse avoidance
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
-          if (toM.length() < 4.8) {
-            toM.normalize().multiplyScalar(maxSpd * 1.4).sub(f.velocity).clampLength(0, maxF * 2.2)
+          const md = toM.length()
+          if (md < 3.8) {
+            toM.normalize().multiplyScalar(maxSpd * 1.1).sub(f.velocity).clampLength(0, maxF * 1.6)
             acc.add(toM)
           }
         }
 
-        acc.add(f.position.clone().multiplyScalar(-0.005))
-        f.velocity.add(acc).clampLength(0.25, maxSpd * f.speed)
-        f.position.add(f.velocity.clone().multiplyScalar(0.32))
+        // Gentle centering
+        acc.add(f.position.clone().multiplyScalar(-0.0035))
 
-        if (Math.abs(f.position.x) > 9) f.velocity.x *= -0.35
-        if (Math.abs(f.position.y) > 5) f.velocity.y *= -0.35
-        if (Math.abs(f.position.z) > 6) f.velocity.z *= -0.35
+        f.velocity.add(acc).clampLength(0.12, maxSpd * f.speed)
+        f.position.add(f.velocity.clone().multiplyScalar(0.28))
+
+        // Soft bounds
+        if (Math.abs(f.position.x) > 8.5) f.velocity.x *= -0.3
+        if (Math.abs(f.position.y) > 4.2) f.velocity.y *= -0.3
+        if (Math.abs(f.position.z) > 5.5) f.velocity.z *= -0.3
 
         const dir = f.velocity.clone().normalize()
         dummy.position.copy(f.position)
         dummy.lookAt(f.position.clone().add(dir))
         dummy.rotateY(Math.PI)
-        dummy.scale.setScalar(1)
         dummy.updateMatrix()
-        mesh.setMatrixAt(i, dummy.matrix)
+        bodyMesh.setMatrixAt(i, dummy.matrix)
+
+        // Eye position (near the head)
+        const eyeOffset = dir.clone().multiplyScalar(0.72 * f.size)
+        eyeDummy.position.copy(f.position).add(eyeOffset)
+        eyeDummy.lookAt(f.position.clone().add(dir))
+        eyeDummy.rotateY(Math.PI)
+        eyeDummy.scale.setScalar(f.size * 0.9)
+        eyeDummy.updateMatrix()
+        eyeMesh.setMatrixAt(i, eyeDummy.matrix)
       }
 
-      mesh.instanceMatrix.needsUpdate = true
+      bodyMesh.instanceMatrix.needsUpdate = true
+      eyeMesh.instanceMatrix.needsUpdate = true
 
-      camera.position.x = Math.sin(time * 0.08) * 0.8
+      camera.position.x = Math.sin(time * 0.06) * 0.6
       camera.lookAt(0, 0, 0)
 
       renderer.render(scene, camera)
@@ -299,7 +325,9 @@ export default function ThreeFishSchool() {
       container.removeEventListener('pointermove', onMove)
       renderer.dispose()
       fishGeo.dispose()
+      eyeGeo.dispose()
       neonMat.dispose()
+      eyeMat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
@@ -315,7 +343,7 @@ export default function ThreeFishSchool() {
         position: 'absolute',
         inset: 0,
         cursor: 'crosshair',
-        background: '#03060a',
+        background: '#020408',
       }}
     />
   )
