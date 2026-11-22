@@ -132,26 +132,25 @@ export default function ThreeFishSchool() {
       opacity: 0.85,
     })
 
-    const FISH_COUNT = 36
+    const FISH_COUNT = 42
     const fishes: FishData[] = []
 
     for (let i = 0; i < FISH_COUNT; i++) {
-      const a = Math.random() * Math.PI * 2
-      const r = 1.0 + Math.random() * 4.2
+      // Spread across the whole "aquarium"
       fishes.push({
         position: new THREE.Vector3(
-          Math.cos(a) * r,
-          (Math.random() - 0.5) * 3.2,
-          Math.sin(a) * r * 0.5
+          (Math.random() - 0.5) * 16,
+          (Math.random() - 0.5) * 8.5,
+          (Math.random() - 0.5) * 6
         ),
         velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.12,
-          (Math.random() - 0.5) * 0.03,
-          (Math.random() - 0.5) * 0.1
+          (Math.random() - 0.5) * 0.18,
+          (Math.random() - 0.5) * 0.06,
+          (Math.random() - 0.5) * 0.12
         ),
         phase: Math.random() * Math.PI * 2,
-        speed: 0.42 + Math.random() * 0.28,
-        size: 0.85 + Math.random() * 0.45,
+        speed: 0.35 + Math.random() * 0.4,
+        size: 0.42 + Math.random() * 0.22, // ~half previous size
         hue: 0.48 + Math.random() * 0.22,
       })
     }
@@ -196,13 +195,12 @@ export default function ThreeFishSchool() {
     let time = 0
     let animId: number
 
-    // Tuned from good boids examples (shoal, MiroFish, Nature of Code):
-    // Separation strongest, Alignment medium, Cohesion weakest.
-    // Separation distance ≈ 1.15 body lengths for comfortable spacing.
-    const maxSpd = 0.48
-    const maxF = 0.009
-    const neighborDist = 3.4
-    const separationDist = 1.35
+    // Aquarium style: weak schooling, each fish mostly does its own thing.
+    // Strong separation so they don't pile up, mild alignment, very weak cohesion.
+    const maxSpd = 0.42
+    const maxF = 0.008
+    const neighborDist = 2.6
+    const separationDist = 1.1
 
     const animate = () => {
       animId = requestAnimationFrame(animate)
@@ -246,13 +244,13 @@ export default function ThreeFishSchool() {
             sep.clampLength(0, maxF * 2.2)
             acc.add(sep)
           }
-          // Alignment — medium
+          // Alignment — weak (aquarium fish don't perfectly sync)
           ali.divideScalar(count).normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          ali.clampLength(0, maxF * 1.1)
+          ali.clampLength(0, maxF * 0.45)
           acc.add(ali)
-          // Cohesion — weakest
+          // Cohesion — very weak
           coh.divideScalar(count).sub(f.position).normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          coh.clampLength(0, maxF * 0.55)
+          coh.clampLength(0, maxF * 0.18)
           acc.add(coh)
         }
 
@@ -267,17 +265,22 @@ export default function ThreeFishSchool() {
           }
         }
 
-        // Gentle centering so the school doesn't drift away
-        acc.add(f.position.clone().multiplyScalar(-0.0028))
+        // Very gentle centering — just keep them in the tank
+        acc.add(f.position.clone().multiplyScalar(-0.0012))
+
+        // Mild random wander so each fish has its own "business"
+        acc.x += (Math.random() - 0.5) * 0.004
+        acc.y += (Math.random() - 0.5) * 0.002
+        acc.z += (Math.random() - 0.5) * 0.003
 
         f.velocity.add(acc)
         f.velocity.clampLength(0.18, maxSpd * f.speed)
         f.position.add(f.velocity.clone().multiplyScalar(0.26))
 
-        // Soft bounds
-        if (Math.abs(f.position.x) > 8.2) f.velocity.x *= -0.25
-        if (Math.abs(f.position.y) > 3.8) f.velocity.y *= -0.25
-        if (Math.abs(f.position.z) > 5.0) f.velocity.z *= -0.25
+        // Soft aquarium bounds (whole screen)
+        if (Math.abs(f.position.x) > 9.2) f.velocity.x *= -0.35
+        if (Math.abs(f.position.y) > 4.6) f.velocity.y *= -0.35
+        if (Math.abs(f.position.z) > 5.5) f.velocity.z *= -0.35
 
         const dir = f.velocity.clone().normalize()
         dummy.position.copy(f.position)
