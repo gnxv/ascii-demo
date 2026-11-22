@@ -44,14 +44,19 @@ export default function AsciiBlackHole() {
         uniform float uTime;
         varying vec2 vUv;
 
-        // Concentric flowing rings
-        float rings(float r, float ang, float speed) {
-          float flow = r * 28.0 - uTime * speed + ang * 0.4;
-          float band = sin(flow) * 0.5 + 0.5;
-          band = pow(band, 1.4);
-          // finer lines
-          float fine = sin(flow * 2.3 + 1.7) * 0.5 + 0.5;
-          return mix(band, fine, 0.35);
+        // Keplerian orbital flow: angular speed ~ r^(-1.5)
+        float orbitalPhase(float r, float ang) {
+          float safeR = max(r, 0.15);
+          float omega = 2.8 / pow(safeR, 1.5); // faster near center
+          return ang - uTime * omega;
+        }
+
+        float rings(float r, float ang) {
+          float phase = orbitalPhase(r, ang);
+          // Spiral arms / density waves from differential rotation
+          float band = sin(phase * 3.0 + r * 12.0) * 0.5 + 0.5;
+          float fine = sin(phase * 7.0 + r * 22.0) * 0.5 + 0.5;
+          return mix(pow(band, 1.2), fine, 0.4);
         }
 
         void main() {
@@ -67,7 +72,7 @@ export default function AsciiBlackHole() {
           float diskY = abs(y);
           float inDisk = smoothstep(0.08, 0.0, diskY) * smoothstep(1.6, 0.3, abs(x));
           float rMain = length(vec2(x, y * 3.5));
-          float mainFlow = rings(rMain, atan(y, x), 3.5);
+          float mainFlow = rings(rMain, atan(y, x));
           float mainMask = inDisk * smoothstep(0.25, 0.4, rMain) * smoothstep(1.7, 1.2, abs(x));
 
           // Upper lensed arc (far side bent over the top)
@@ -75,14 +80,14 @@ export default function AsciiBlackHole() {
           float arcR = length(vec2(x * 0.85, (y - arcCenterY) * 1.1));
           float upperArc = smoothstep(0.55, 0.35, arcR) * smoothstep(0.15, 0.32, arcR);
           upperArc *= smoothstep(-0.1, 0.15, y);
-          float upperFlow = rings(arcR * 1.4, atan(y - arcCenterY, x), 2.8);
+          float upperFlow = rings(arcR, atan(y - arcCenterY, x));
 
           // Lower secondary image
           float lowCenterY = -0.38;
           float lowR = length(vec2(x * 1.1, (y - lowCenterY) * 1.3));
           float lowerArc = smoothstep(0.32, 0.18, lowR) * smoothstep(0.06, 0.16, lowR);
           lowerArc *= smoothstep(0.05, -0.1, y);
-          float lowerFlow = rings(lowR * 1.6, atan(y - lowCenterY, x), 3.2);
+          float lowerFlow = rings(lowR, atan(y - lowCenterY, x));
 
           // Photon ring
           float pr = abs(horizon - 0.3);
