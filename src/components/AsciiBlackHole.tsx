@@ -20,7 +20,7 @@ export default function AsciiBlackHole() {
       0.1,
       60
     )
-    camera.position.set(0, 6.5, 20)
+    camera.position.set(0, 9.5, 16)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -298,8 +298,8 @@ export default function AsciiBlackHole() {
       }
       sparkGeo.attributes.position.needsUpdate = true
 
-      camera.position.x = Math.sin(time * 0.05) * 1.8
-      camera.position.y = 6.2 + Math.sin(time * 0.03) * 0.5
+      camera.position.x = Math.sin(time * 0.05) * 1.6
+      camera.position.y = 9.2 + Math.sin(time * 0.03) * 0.4
       camera.lookAt(0, 0, 0)
 
       renderer.render(scene, camera)
