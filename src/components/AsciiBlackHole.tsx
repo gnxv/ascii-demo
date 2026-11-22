@@ -20,7 +20,7 @@ export default function AsciiBlackHole() {
       0.1,
       60
     )
-    camera.position.set(0, 2.4, 16)
+    camera.position.set(0, 5.5, 14)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -32,13 +32,6 @@ export default function AsciiBlackHole() {
 
     // Soft ambient
     scene.add(new THREE.AmbientLight(0x111122, 0.4))
-
-    // Event horizon
-    const horizon = new THREE.Mesh(
-      new THREE.SphereGeometry(1.05, 48, 48),
-      new THREE.MeshBasicMaterial({ color: 0x000000 })
-    )
-    scene.add(horizon)
 
     // Photon ring (thin bright)
     const photonGeo = new THREE.RingGeometry(1.12, 1.22, 96)
@@ -149,7 +142,7 @@ export default function AsciiBlackHole() {
     // Jets — thinner, brighter core
     function makeJet(up: boolean) {
       // Soft volumetric-style jet via tapered cylinder + radial falloff shader
-      const geo = new THREE.CylinderGeometry(0.02, 0.55, 6.2, 24, 1, true)
+      const geo = new THREE.CylinderGeometry(0.62, 0.04, 6.2, 24, 1, true)
       const mat = new THREE.ShaderMaterial({
         uniforms: { uTime: { value: 0 } },
         vertexShader: /* glsl */ `
@@ -282,8 +275,8 @@ export default function AsciiBlackHole() {
       }
       sparkGeo.attributes.position.needsUpdate = true
 
-      camera.position.x = Math.sin(time * 0.06) * 1.1
-      camera.position.y = 2.2 + Math.sin(time * 0.04) * 0.3
+      camera.position.x = Math.sin(time * 0.05) * 1.4
+      camera.position.y = 5.2 + Math.sin(time * 0.03) * 0.4
       camera.lookAt(0, 0, 0)
 
       renderer.render(scene, camera)
@@ -301,8 +294,6 @@ export default function AsciiBlackHole() {
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
-      horizon.geometry.dispose()
-      ;(horizon.material as THREE.Material).dispose()
       photonGeo.dispose()
       photonMat.dispose()
       diskGeo.dispose()
