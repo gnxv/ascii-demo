@@ -247,7 +247,7 @@ export default function Home() {
 
   const scenes = [
     { id: "jellyfish", title: "", component: <AsciiJellyfish />, bg: "bg-black" },
-    { id: "fish", title: "", component: <ThreeFishSchool />, bg: "bg-black" },
+    { id: "rays", title: "", component: <ThreeFishSchool />, bg: "bg-black" },
     { id: "blackhole", title: "", component: <AsciiBlackHole />, bg: "bg-black" },
     { id: "frogs", title: "", component: <AsciiFrogs />, bg: "bg-green-950" },
     { id: "snow", title: "", component: <Snow />, bg: "bg-slate-950" },
