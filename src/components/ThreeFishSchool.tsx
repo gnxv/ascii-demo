@@ -49,20 +49,22 @@ export default function ThreeFishSchool() {
 
     function createFishShape() {
       const s = new THREE.Shape()
-      // Angelfish (скалярия): tall, diamond-shaped, high dorsal + anal fins
-      // Nose (pointed)
-      s.moveTo(0.7, 0)
-      // Steep rise into tall dorsal fin
-      s.quadraticCurveTo(0.35, 0.9, -0.1, 1.25)
-      s.quadraticCurveTo(-0.5, 1.15, -0.7, 0.6)
-      // Short tail relative to height
-      s.lineTo(-1.05, 0.4)
-      s.lineTo(-0.85, 0.05)
-      s.lineTo(-1.05, -0.4)
-      s.lineTo(-0.7, -0.6)
-      // Tall anal fin
-      s.quadraticCurveTo(-0.5, -1.15, -0.1, -1.25)
-      s.quadraticCurveTo(0.35, -0.9, 0.7, 0)
+      // Angelfish side view: tall body, two long sharp trailing points (dorsal + anal)
+      // Nose
+      s.moveTo(0.65, 0)
+      // Upper body into long pointed dorsal
+      s.quadraticCurveTo(0.3, 0.7, -0.05, 1.05)
+      s.lineTo(-0.35, 1.35)          // long sharp dorsal tip
+      s.lineTo(-0.55, 0.55)
+      // Short caudal
+      s.lineTo(-0.95, 0.28)
+      s.lineTo(-0.75, 0)
+      s.lineTo(-0.95, -0.28)
+      s.lineTo(-0.55, -0.55)
+      // Long sharp anal tip
+      s.lineTo(-0.35, -1.35)
+      s.quadraticCurveTo(-0.05, -1.05, 0.3, -0.7)
+      s.quadraticCurveTo(0.5, -0.35, 0.65, 0)
       return s
     }
 
@@ -163,7 +165,7 @@ export default function ThreeFishSchool() {
         velocity: vel,
         phase: Math.random() * Math.PI * 2,
         speed: 0.35 + Math.random() * 0.4,
-        size: 0.42 + Math.random() * 0.22,
+        size: 0.378 + Math.random() * 0.198, // -10%
         hue: 0.48 + Math.random() * 0.22,
         target: new THREE.Vector3(
           (Math.random() - 0.5) * 14,
