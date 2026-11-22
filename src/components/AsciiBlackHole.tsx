@@ -42,12 +42,30 @@ export default function AsciiBlackHole() {
 
     // Photon ring (thin bright)
     const photonGeo = new THREE.RingGeometry(1.12, 1.22, 96)
-    const photonMat = new THREE.MeshBasicMaterial({
-      color: 0xfff4d0,
-      side: THREE.DoubleSide,
+    const photonMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 } },
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        void main() {
+          vUv = uv;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uTime;
+        varying vec2 vUv;
+        void main() {
+          float d = abs(vUv.y - 0.5) * 2.0;
+          float soft = exp(-d * d * 12.0);
+          float pulse = 0.75 + 0.25 * sin(uTime * 2.2);
+          vec3 col = vec3(1.0, 0.94, 0.75) * soft * pulse;
+          gl_FragColor = vec4(col, soft * 0.8);
+        }
+      `,
       transparent: true,
-      opacity: 0.95,
       blending: THREE.AdditiveBlending,
+      side: THREE.DoubleSide,
+      depthWrite: false,
     })
     const photon = new THREE.Mesh(photonGeo, photonMat)
     photon.rotation.x = -Math.PI / 2.6
@@ -130,25 +148,37 @@ export default function AsciiBlackHole() {
 
     // Jets — thinner, brighter core
     function makeJet(up: boolean) {
-      const geo = new THREE.CylinderGeometry(0.06, 0.28, 5.5, 16, 1, true)
+      // Soft volumetric-style jet via tapered cylinder + radial falloff shader
+      const geo = new THREE.CylinderGeometry(0.02, 0.55, 6.2, 24, 1, true)
       const mat = new THREE.ShaderMaterial({
         uniforms: { uTime: { value: 0 } },
         vertexShader: /* glsl */ `
-          varying float vY;
+          varying vec3 vPos;
+          varying vec3 vNormal;
           void main() {
-            vY = position.y;
+            vPos = position;
+            vNormal = normalize(normalMatrix * normal);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `,
         fragmentShader: /* glsl */ `
           uniform float uTime;
-          varying float vY;
+          varying vec3 vPos;
+          varying vec3 vNormal;
           void main() {
-            float pulse = 0.55 + 0.45 * sin(uTime * 4.0 + vY * 1.8);
-            float core = smoothstep(0.35, 0.0, abs(vY) * 0.15);
-            float fade = smoothstep(2.6, -2.2, vY);
-            vec3 col = mix(vec3(0.4, 0.7, 1.0), vec3(1.0, 0.95, 0.8), core) * pulse;
-            gl_FragColor = vec4(col, fade * 0.65);
+            float y = vPos.y;
+            float radial = length(vPos.xz);
+            // Soft radial falloff from center
+            float soft = exp(-radial * radial * 8.0);
+            soft *= smoothstep(0.55, 0.0, radial);
+            // Longitudinal fade
+            float along = smoothstep(3.1, 0.2, abs(y));
+            float pulse = 0.65 + 0.35 * sin(uTime * 2.8 + y * 1.4);
+            vec3 core = vec3(1.0, 0.95, 0.75);
+            vec3 edge = vec3(0.35, 0.6, 1.0);
+            vec3 col = mix(edge, core, soft) * pulse;
+            float alpha = soft * along * 0.7;
+            gl_FragColor = vec4(col, alpha);
           }
         `,
         transparent: true,
@@ -157,7 +187,7 @@ export default function AsciiBlackHole() {
         depthWrite: false,
       })
       const mesh = new THREE.Mesh(geo, mat)
-      mesh.position.y = up ? 3.2 : -3.2
+      mesh.position.y = up ? 3.4 : -3.4
       if (!up) mesh.rotation.x = Math.PI
       scene.add(mesh)
       return { mesh, mat }
@@ -228,6 +258,7 @@ export default function AsciiBlackHole() {
       time += 0.016
 
       diskMat.uniforms.uTime.value = time
+      photonMat.uniforms.uTime.value = time
       coronaMat.uniforms.uTime.value = time
       jetUp.mat.uniforms.uTime.value = time
       jetDown.mat.uniforms.uTime.value = time
