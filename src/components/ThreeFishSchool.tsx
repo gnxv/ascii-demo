@@ -10,6 +10,9 @@ type FishData = {
   speed: number
   size: number
   hue: number
+  target: THREE.Vector3
+  targetTimer: number
+  prevDir: THREE.Vector3
 }
 
 export default function ThreeFishSchool() {
@@ -136,22 +139,30 @@ export default function ThreeFishSchool() {
     const fishes: FishData[] = []
 
     for (let i = 0; i < FISH_COUNT; i++) {
-      // Spread across the whole "aquarium"
+      const pos = new THREE.Vector3(
+        (Math.random() - 0.5) * 16,
+        (Math.random() - 0.5) * 8.5,
+        (Math.random() - 0.5) * 6
+      )
+      const vel = new THREE.Vector3(
+        (Math.random() - 0.5) * 0.18,
+        (Math.random() - 0.5) * 0.06,
+        (Math.random() - 0.5) * 0.12
+      )
       fishes.push({
-        position: new THREE.Vector3(
-          (Math.random() - 0.5) * 16,
-          (Math.random() - 0.5) * 8.5,
-          (Math.random() - 0.5) * 6
-        ),
-        velocity: new THREE.Vector3(
-          (Math.random() - 0.5) * 0.18,
-          (Math.random() - 0.5) * 0.06,
-          (Math.random() - 0.5) * 0.12
-        ),
+        position: pos,
+        velocity: vel,
         phase: Math.random() * Math.PI * 2,
         speed: 0.35 + Math.random() * 0.4,
-        size: 0.42 + Math.random() * 0.22, // ~half previous size
+        size: 0.42 + Math.random() * 0.22,
         hue: 0.48 + Math.random() * 0.22,
+        target: new THREE.Vector3(
+          (Math.random() - 0.5) * 14,
+          (Math.random() - 0.5) * 7,
+          (Math.random() - 0.5) * 5
+        ),
+        targetTimer: 2 + Math.random() * 4,
+        prevDir: vel.clone().normalize(),
       })
     }
 
@@ -195,14 +206,13 @@ export default function ThreeFishSchool() {
     let time = 0
     let animId: number
 
-    // Aquarium style with smooth physics:
-    // Strong separation, weak alignment, almost no cohesion.
-    // Velocity damping + limited turn rate for natural motion.
-    const maxSpd = 0.38
-    const maxF = 0.0065
-    const neighborDist = 2.4
-    const separationDist = 1.25
-    const damping = 0.985
+    // Full natural aquarium physics
+    const maxSpd = 0.42
+    const maxF = 0.007
+    const neighborDist = 2.6
+    const separationDist = 1.3
+    const damping = 0.982
+    const maxTurn = 0.045 // radians per frame approx via velocity blend
 
     const animate = () => {
       animId = requestAnimationFrame(animate)
@@ -217,6 +227,17 @@ export default function ThreeFishSchool() {
       for (let i = 0; i < FISH_COUNT; i++) {
         const f = fishes[i]
 
+        // Update target periodically
+        f.targetTimer -= 0.016
+        if (f.targetTimer <= 0 || f.position.distanceTo(f.target) < 1.2) {
+          f.target.set(
+            (Math.random() - 0.5) * 14,
+            (Math.random() - 0.5) * 7,
+            (Math.random() - 0.5) * 5
+          )
+          f.targetTimer = 3 + Math.random() * 5
+        }
+
         const sep = new THREE.Vector3()
         const ali = new THREE.Vector3()
         const coh = new THREE.Vector3()
@@ -228,8 +249,7 @@ export default function ThreeFishSchool() {
           const d = f.position.distanceTo(o.position)
           if (d < neighborDist && d > 0.01) {
             if (d < separationDist) {
-              // Stronger push when closer (1/d weighting)
-              const diff = f.position.clone().sub(o.position).normalize().divideScalar(Math.max(d, 0.15))
+              const diff = f.position.clone().sub(o.position).normalize().divideScalar(Math.max(d, 0.2))
               sep.add(diff)
             }
             ali.add(o.velocity)
@@ -239,56 +259,82 @@ export default function ThreeFishSchool() {
         }
 
         const acc = new THREE.Vector3()
+
         if (count > 0) {
-          // Separation — strongest
           if (sep.lengthSq() > 0) {
             sep.normalize().multiplyScalar(maxSpd).sub(f.velocity)
-            sep.clampLength(0, maxF * 2.2)
+            sep.clampLength(0, maxF * 2.4)
             acc.add(sep)
           }
-          // Alignment — very weak
           ali.divideScalar(count).normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          ali.clampLength(0, maxF * 0.3)
+          ali.clampLength(0, maxF * 0.25)
           acc.add(ali)
-          // Cohesion — almost off (prevents clumping)
           coh.divideScalar(count).sub(f.position).normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          coh.clampLength(0, maxF * 0.08)
+          coh.clampLength(0, maxF * 0.06)
           acc.add(coh)
         }
 
-        // Soft mouse avoidance with smooth falloff (like shoal)
+        // Seek current target (main trajectory driver)
+        const toTarget = f.target.clone().sub(f.position)
+        if (toTarget.length() > 0.5) {
+          toTarget.normalize().multiplyScalar(maxSpd * 0.85).sub(f.velocity)
+          toTarget.clampLength(0, maxF * 0.9)
+          acc.add(toTarget)
+        }
+
+        // Layered soft mouse avoidance
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
           const md = toM.length()
-          if (md < 5.5 && md > 0.1) {
-            const strength = Math.pow(1 - md / 5.5, 1.6)
-            toM.normalize().multiplyScalar(maxSpd * strength * 1.4).sub(f.velocity)
-            toM.clampLength(0, maxF * 1.4 * strength)
-            acc.add(toM)
+          if (md < 6.5 && md > 0.15) {
+            const strength = Math.pow(Math.max(0, 1 - md / 6.5), 1.8)
+            const avoid = toM.normalize().multiplyScalar(maxSpd * strength * 1.6).sub(f.velocity)
+            avoid.clampLength(0, maxF * 1.6 * strength)
+            acc.add(avoid)
           }
         }
 
+        // Soft wall repulsion (start early)
+        const wallForce = new THREE.Vector3()
+        if (Math.abs(f.position.x) > 7.5) wallForce.x = -Math.sign(f.position.x) * 0.012
+        if (Math.abs(f.position.y) > 3.8) wallForce.y = -Math.sign(f.position.y) * 0.01
+        if (Math.abs(f.position.z) > 4.5) wallForce.z = -Math.sign(f.position.z) * 0.008
+        acc.add(wallForce)
+
         // Gentle centering
-        acc.add(f.position.clone().multiplyScalar(-0.0008))
+        acc.add(f.position.clone().multiplyScalar(-0.0006))
 
-        // Continuous smooth wander (sin-based, not random jitter)
-        const wander = new THREE.Vector3(
-          Math.sin(time * 0.7 + f.phase) * 0.0035,
-          Math.sin(time * 0.5 + f.phase * 1.3) * 0.0018,
-          Math.cos(time * 0.6 + f.phase * 0.8) * 0.0025
-        )
-        acc.add(wander)
+        // Continuous smooth wander
+        acc.add(new THREE.Vector3(
+          Math.sin(time * 0.65 + f.phase) * 0.0028,
+          Math.sin(time * 0.45 + f.phase * 1.2) * 0.0014,
+          Math.cos(time * 0.55 + f.phase * 0.7) * 0.002
+        ))
 
-        // Apply acceleration with damping for smooth motion
+        // Apply + damping
         f.velocity.add(acc)
         f.velocity.multiplyScalar(damping)
-        f.velocity.clampLength(0.12, maxSpd * f.speed)
-        f.position.add(f.velocity.clone().multiplyScalar(0.22))
 
-        // Soft aquarium bounds (whole screen)
-        if (Math.abs(f.position.x) > 9.2) f.velocity.x *= -0.35
-        if (Math.abs(f.position.y) > 4.6) f.velocity.y *= -0.35
-        if (Math.abs(f.position.z) > 5.5) f.velocity.z *= -0.35
+        // Limit turn rate (blend toward previous direction)
+        const desiredDir = f.velocity.clone().normalize()
+        const blended = f.prevDir.clone().lerp(desiredDir, 0.12).normalize()
+        const spd = f.velocity.length()
+        f.velocity.copy(blended).multiplyScalar(spd)
+        f.prevDir.copy(blended)
+
+        // Adaptive speed: slightly faster when avoiding
+        let targetSpeed = maxSpd * f.speed
+        if (mouse.x < 10 && f.position.distanceTo(mouseWorld) < 4) {
+          targetSpeed *= 1.25
+        }
+        f.velocity.clampLength(0.1, targetSpeed)
+
+        f.position.add(f.velocity.clone().multiplyScalar(0.2))
+
+        // Hard safety bounds
+        if (Math.abs(f.position.x) > 9.8) f.velocity.x *= -0.4
+        if (Math.abs(f.position.y) > 5.0) f.velocity.y *= -0.4
+        if (Math.abs(f.position.z) > 5.8) f.velocity.z *= -0.4
 
         const dir = f.velocity.clone().normalize()
         dummy.position.copy(f.position)
