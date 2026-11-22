@@ -33,8 +33,15 @@ export default function AsciiBlackHole() {
     // Soft ambient
     scene.add(new THREE.AmbientLight(0x111122, 0.4))
 
+    // Event horizon — pure black
+    const horizon = new THREE.Mesh(
+      new THREE.SphereGeometry(1.0, 48, 48),
+      new THREE.MeshBasicMaterial({ color: 0x000000 })
+    )
+    scene.add(horizon)
+
     // Photon ring (thin bright)
-    const photonGeo = new THREE.RingGeometry(1.12, 1.22, 96)
+    const photonGeo = new THREE.RingGeometry(1.08, 1.18, 128)
     const photonMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
       vertexShader: /* glsl */ `
@@ -141,37 +148,32 @@ export default function AsciiBlackHole() {
 
     // Jets — thinner, brighter core
     function makeJet(up: boolean) {
-      // Soft volumetric-style jet via tapered cylinder + radial falloff shader
-      const geo = new THREE.CylinderGeometry(0.62, 0.04, 6.2, 24, 1, true)
+      // Narrow near the black hole, wider far away, soft edges
+      const geo = new THREE.CylinderGeometry(0.85, 0.03, 7.0, 32, 1, true)
       const mat = new THREE.ShaderMaterial({
         uniforms: { uTime: { value: 0 } },
         vertexShader: /* glsl */ `
           varying vec3 vPos;
-          varying vec3 vNormal;
           void main() {
             vPos = position;
-            vNormal = normalize(normalMatrix * normal);
             gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
           }
         `,
         fragmentShader: /* glsl */ `
           uniform float uTime;
           varying vec3 vPos;
-          varying vec3 vNormal;
           void main() {
             float y = vPos.y;
             float radial = length(vPos.xz);
-            // Soft radial falloff from center
-            float soft = exp(-radial * radial * 8.0);
-            soft *= smoothstep(0.55, 0.0, radial);
-            // Longitudinal fade
-            float along = smoothstep(3.1, 0.2, abs(y));
-            float pulse = 0.65 + 0.35 * sin(uTime * 2.8 + y * 1.4);
-            vec3 core = vec3(1.0, 0.95, 0.75);
-            vec3 edge = vec3(0.35, 0.6, 1.0);
-            vec3 col = mix(edge, core, soft) * pulse;
-            float alpha = soft * along * 0.7;
-            gl_FragColor = vec4(col, alpha);
+            // Soft gaussian falloff from axis
+            float soft = exp(-pow(radial * 3.5, 2.0));
+            // Fade along length
+            float along = smoothstep(3.5, 0.4, abs(y));
+            float pulse = 0.7 + 0.3 * sin(uTime * 2.2 + y * 1.1);
+            vec3 core = vec3(1.0, 0.96, 0.8);
+            vec3 outer = vec3(0.3, 0.55, 1.0);
+            vec3 col = mix(outer, core, soft) * pulse;
+            gl_FragColor = vec4(col, soft * along * 0.75);
           }
         `,
         transparent: true,
@@ -180,11 +182,12 @@ export default function AsciiBlackHole() {
         depthWrite: false,
       })
       const mesh = new THREE.Mesh(geo, mat)
-      mesh.position.y = up ? 3.4 : -3.4
+      mesh.position.y = up ? 3.8 : -3.8
       if (!up) mesh.rotation.x = Math.PI
       scene.add(mesh)
       return { mesh, mat }
     }
+
     const jetUp = makeJet(true)
     const jetDown = makeJet(false)
 
@@ -294,6 +297,8 @@ export default function AsciiBlackHole() {
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
+      horizon.geometry.dispose()
+      ;(horizon.material as THREE.Material).dispose()
       photonGeo.dispose()
       photonMat.dispose()
       diskGeo.dispose()
