@@ -13,6 +13,10 @@ type FishData = {
   target: THREE.Vector3
   targetTimer: number
   prevDir: THREE.Vector3
+  personality: number      // 0 = straight, 1 = more wandering
+  preferredY: number
+  cruiseTimer: number
+  maneuvering: boolean
 }
 
 export default function ThreeFishSchool() {
@@ -163,6 +167,10 @@ export default function ThreeFishSchool() {
         ),
         targetTimer: 2 + Math.random() * 4,
         prevDir: vel.clone().normalize(),
+        personality: Math.random(),
+        preferredY: (Math.random() - 0.5) * 3.5,
+        cruiseTimer: 1 + Math.random() * 3,
+        maneuvering: false,
       })
     }
 
@@ -227,20 +235,55 @@ export default function ThreeFishSchool() {
       for (let i = 0; i < FISH_COUNT; i++) {
         const f = fishes[i]
 
-        // Update target periodically
+        // Smarter target selection
         f.targetTimer -= 0.016
-        if (f.targetTimer <= 0 || f.position.distanceTo(f.target) < 1.2) {
-          f.target.set(
-            (Math.random() - 0.5) * 14,
-            (Math.random() - 0.5) * 7,
-            (Math.random() - 0.5) * 5
-          )
-          f.targetTimer = 3 + Math.random() * 5
+        f.cruiseTimer -= 0.016
+
+        if (f.cruiseTimer <= 0) {
+          f.maneuvering = Math.random() < 0.35
+          f.cruiseTimer = f.maneuvering ? 0.8 + Math.random() * 1.2 : 2.5 + Math.random() * 4
+        }
+
+        if (f.targetTimer <= 0 || f.position.distanceTo(f.target) < 1.4) {
+          const dir = f.prevDir.clone()
+          // Prefer continuing roughly forward
+          const forwardBias = dir.multiplyScalar(4 + Math.random() * 3)
+          let newTarget = f.position.clone().add(forwardBias)
+
+          // Sometimes pick a zone or another fish
+          if (Math.random() < 0.3) {
+            // Zone preference
+            const zones = [
+              new THREE.Vector3(-6, f.preferredY, 0),
+              new THREE.Vector3(6, f.preferredY, 0),
+              new THREE.Vector3(0, f.preferredY + 1.5, 1),
+              new THREE.Vector3(0, f.preferredY - 1.5, -1),
+            ]
+            newTarget = zones[Math.floor(Math.random() * zones.length)].clone()
+            newTarget.x += (Math.random() - 0.5) * 3
+            newTarget.y += (Math.random() - 0.5) * 1.5
+          } else if (Math.random() < 0.15) {
+            // Interest in another fish at a distance
+            const other = fishes[Math.floor(Math.random() * FISH_COUNT)]
+            if (other !== f) {
+              newTarget = other.position.clone().add(
+                new THREE.Vector3((Math.random() - 0.5) * 2.5, (Math.random() - 0.5) * 1.2, (Math.random() - 0.5) * 1.5)
+              )
+            }
+          }
+
+          // Clamp to aquarium
+          newTarget.x = Math.max(-8, Math.min(8, newTarget.x))
+          newTarget.y = Math.max(-3.5, Math.min(3.5, newTarget.y))
+          newTarget.z = Math.max(-4, Math.min(4, newTarget.z))
+
+          f.target.copy(newTarget)
+          f.targetTimer = 2.5 + Math.random() * 4 + f.personality * 2
         }
 
         const sep = new THREE.Vector3()
         const ali = new THREE.Vector3()
-        const coh = new THREE.Vector3()
+        const sidePush = new THREE.Vector3()
         let count = 0
 
         for (let j = 0; j < FISH_COUNT; j++) {
@@ -249,87 +292,115 @@ export default function ThreeFishSchool() {
           const d = f.position.distanceTo(o.position)
           if (d < neighborDist && d > 0.01) {
             if (d < separationDist) {
-              const diff = f.position.clone().sub(o.position).normalize().divideScalar(Math.max(d, 0.2))
+              const diff = f.position.clone().sub(o.position).normalize().divideScalar(Math.max(d, 0.25))
               sep.add(diff)
+              // Side push when close laterally
+              const toOther = o.position.clone().sub(f.position)
+              const lateral = toOther.clone().cross(f.prevDir).cross(f.prevDir)
+              if (lateral.lengthSq() > 0.01) {
+                sidePush.add(lateral.normalize().multiplyScalar(-0.4 / Math.max(d, 0.3)))
+              }
             }
-            ali.add(o.velocity)
-            coh.add(o.position)
+            // Soft alignment only when comfortably spaced
+            if (d > separationDist * 0.7) {
+              ali.add(o.velocity)
+            }
             count++
           }
         }
 
         const acc = new THREE.Vector3()
 
-        if (count > 0) {
-          if (sep.lengthSq() > 0) {
-            sep.normalize().multiplyScalar(maxSpd).sub(f.velocity)
-            sep.clampLength(0, maxF * 2.4)
-            acc.add(sep)
-          }
-          ali.divideScalar(count).normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          ali.clampLength(0, maxF * 0.25)
+        if (sep.lengthSq() > 0) {
+          sep.normalize().multiplyScalar(maxSpd).sub(f.velocity)
+          sep.clampLength(0, maxF * 2.6)
+          acc.add(sep)
+        }
+        if (sidePush.lengthSq() > 0) {
+          sidePush.clampLength(0, maxF * 0.8)
+          acc.add(sidePush)
+        }
+        if (count > 0 && ali.lengthSq() > 0) {
+          ali.divideScalar(Math.max(count, 1)).normalize().multiplyScalar(maxSpd).sub(f.velocity)
+          ali.clampLength(0, maxF * 0.2)
           acc.add(ali)
-          coh.divideScalar(count).sub(f.position).normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          coh.clampLength(0, maxF * 0.06)
-          acc.add(coh)
         }
 
-        // Seek current target (main trajectory driver)
+        // Seek target (weaker when cruising straight)
         const toTarget = f.target.clone().sub(f.position)
-        if (toTarget.length() > 0.5) {
-          toTarget.normalize().multiplyScalar(maxSpd * 0.85).sub(f.velocity)
-          toTarget.clampLength(0, maxF * 0.9)
+        if (toTarget.length() > 0.6) {
+          const seekStrength = f.maneuvering ? 1.1 : 0.55
+          toTarget.normalize().multiplyScalar(maxSpd * seekStrength).sub(f.velocity)
+          toTarget.clampLength(0, maxF * (f.maneuvering ? 1.1 : 0.6))
           acc.add(toTarget)
         }
 
-        // Layered soft mouse avoidance
+        // Layered mouse: close flee, medium diverge, rare interest
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
           const md = toM.length()
-          if (md < 6.5 && md > 0.15) {
-            const strength = Math.pow(Math.max(0, 1 - md / 6.5), 1.8)
-            const avoid = toM.normalize().multiplyScalar(maxSpd * strength * 1.6).sub(f.velocity)
-            avoid.clampLength(0, maxF * 1.6 * strength)
-            acc.add(avoid)
+          if (md < 7 && md > 0.2) {
+            if (md < 3.2) {
+              // Strong avoid
+              const avoid = toM.normalize().multiplyScalar(maxSpd * 1.5).sub(f.velocity)
+              avoid.clampLength(0, maxF * 1.8)
+              acc.add(avoid)
+            } else if (md < 5.5) {
+              // Gentle diverge
+              const diverge = toM.normalize().multiplyScalar(maxSpd * 0.4).sub(f.velocity)
+              diverge.clampLength(0, maxF * 0.5)
+              acc.add(diverge)
+            } else if (Math.random() < 0.002 && f.personality > 0.6) {
+              // Rare curiosity
+              const interest = mouseWorld.clone().sub(f.position).normalize().multiplyScalar(maxSpd * 0.3)
+              interest.clampLength(0, maxF * 0.3)
+              acc.add(interest)
+            }
           }
         }
 
-        // Soft wall repulsion (start early)
+        // Soft wall repulsion
         const wallForce = new THREE.Vector3()
-        if (Math.abs(f.position.x) > 7.5) wallForce.x = -Math.sign(f.position.x) * 0.012
-        if (Math.abs(f.position.y) > 3.8) wallForce.y = -Math.sign(f.position.y) * 0.01
-        if (Math.abs(f.position.z) > 4.5) wallForce.z = -Math.sign(f.position.z) * 0.008
+        if (Math.abs(f.position.x) > 7.2) wallForce.x = -Math.sign(f.position.x) * 0.014
+        if (Math.abs(f.position.y) > 3.6) wallForce.y = -Math.sign(f.position.y) * 0.011
+        if (Math.abs(f.position.z) > 4.2) wallForce.z = -Math.sign(f.position.z) * 0.009
         acc.add(wallForce)
 
-        // Gentle centering
-        acc.add(f.position.clone().multiplyScalar(-0.0006))
+        // Preferred height pull
+        const yDiff = f.preferredY - f.position.y
+        acc.y += yDiff * 0.0015
 
-        // Continuous smooth wander
+        // Gentle centering
+        acc.add(f.position.clone().multiplyScalar(-0.0005))
+
+        // Personality-based wander (stronger for high personality)
+        const wanderAmp = 0.0015 + f.personality * 0.002
         acc.add(new THREE.Vector3(
-          Math.sin(time * 0.65 + f.phase) * 0.0028,
-          Math.sin(time * 0.45 + f.phase * 1.2) * 0.0014,
-          Math.cos(time * 0.55 + f.phase * 0.7) * 0.002
+          Math.sin(time * 0.6 + f.phase) * wanderAmp,
+          Math.sin(time * 0.4 + f.phase * 1.1) * wanderAmp * 0.6,
+          Math.cos(time * 0.5 + f.phase * 0.8) * wanderAmp * 0.7
         ))
 
         // Apply + damping
         f.velocity.add(acc)
         f.velocity.multiplyScalar(damping)
 
-        // Limit turn rate (blend toward previous direction)
+        // Limit turn rate
         const desiredDir = f.velocity.clone().normalize()
-        const blended = f.prevDir.clone().lerp(desiredDir, 0.12).normalize()
+        const turnLerp = f.maneuvering ? 0.18 : 0.08
+        const blended = f.prevDir.clone().lerp(desiredDir, turnLerp).normalize()
         const spd = f.velocity.length()
         f.velocity.copy(blended).multiplyScalar(spd)
         f.prevDir.copy(blended)
 
-        // Adaptive speed: slightly faster when avoiding
-        let targetSpeed = maxSpd * f.speed
-        if (mouse.x < 10 && f.position.distanceTo(mouseWorld) < 4) {
-          targetSpeed *= 1.25
-        }
-        f.velocity.clampLength(0.1, targetSpeed)
+        // Situational speed
+        let targetSpeed = maxSpd * (0.75 + f.speed * 0.4)
+        if (f.maneuvering) targetSpeed *= 1.15
+        if (mouse.x < 10 && f.position.distanceTo(mouseWorld) < 3.5) targetSpeed *= 1.2
+        if (!f.maneuvering && count === 0) targetSpeed *= 0.85
+        f.velocity.clampLength(0.08, targetSpeed)
 
-        f.position.add(f.velocity.clone().multiplyScalar(0.2))
+        f.position.add(f.velocity.clone().multiplyScalar(0.18))
 
         // Hard safety bounds
         if (Math.abs(f.position.x) > 9.8) f.velocity.x *= -0.4
