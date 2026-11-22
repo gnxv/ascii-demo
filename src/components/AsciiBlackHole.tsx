@@ -51,7 +51,7 @@ export default function AsciiBlackHole() {
           float d = abs(vUv.y - 0.5) * 2.0;
           float soft = exp(-d * d * 12.0);
           float pulse = 0.75 + 0.25 * sin(uTime * 2.2);
-          vec3 col = vec3(1.0, 0.94, 0.75) * soft * pulse;
+          vec3 col = vec3(0.95, 0.75, 1.0) * soft * pulse;
           gl_FragColor = vec4(col, soft * 0.8);
         }
       `,
@@ -100,9 +100,9 @@ export default function AsciiBlackHole() {
           turbulence *= 0.85 + 0.15 * sin(r * 14.0 - spin * 5.0);
 
           // Temperature gradient
-          vec3 hot = vec3(1.0, 0.97, 0.85);
-          vec3 mid = vec3(1.0, 0.55, 0.15);
-          vec3 cool = vec3(0.7, 0.12, 0.04);
+          vec3 hot = vec3(0.95, 0.8, 1.0);
+          vec3 mid = vec3(0.65, 0.25, 0.95);
+          vec3 cool = vec3(0.35, 0.08, 0.55);
           vec3 col = mix(hot, mid, smoothstep(1.6, 3.4, r));
           col = mix(col, cool, smoothstep(3.2, 6.5, r));
 
@@ -147,7 +147,7 @@ export default function AsciiBlackHole() {
     // Secondary outer faint disk
     const outerGeo = new THREE.RingGeometry(5.5, 9.5, 64, 4)
     const outerMat = new THREE.MeshBasicMaterial({
-      color: 0x441100,
+      color: 0x2a0844,
       transparent: true,
       opacity: 0.18,
       blending: THREE.AdditiveBlending,
@@ -173,14 +173,20 @@ export default function AsciiBlackHole() {
             float along = (pos.y + 3.75) / 7.5; // 0 at base, 1 at tip
             vAlong = along;
 
-            // Helical displacement
-            float helix = along * 6.28 * 1.5 + uTime * 1.8;
-            float amp = 0.08 * along;
+            // Stronger helical vortex
+            float helix = along * 6.28 * 2.2 + uTime * 2.4;
+            float amp = 0.18 * smoothstep(0.05, 0.4, along) * (1.0 - along * 0.3);
             pos.x += cos(helix) * amp;
             pos.z += sin(helix) * amp;
 
-            // Knot-like bulges
-            float knots = sin(along * 18.0 - uTime * 3.5) * 0.06 * along;
+            // Secondary tighter twist
+            float helix2 = along * 6.28 * 5.0 - uTime * 3.5;
+            float amp2 = 0.06 * along;
+            pos.x += cos(helix2) * amp2;
+            pos.z += sin(helix2) * amp2;
+
+            // Knots
+            float knots = sin(along * 14.0 - uTime * 3.0) * 0.1 * along;
             pos.xz *= 1.0 + knots;
 
             vPos = pos;
@@ -204,9 +210,9 @@ export default function AsciiBlackHole() {
             // Fade
             float alongFade = smoothstep(0.0, 0.15, vAlong) * smoothstep(1.0, 0.75, vAlong);
 
-            vec3 core = vec3(1.0, 0.95, 0.7);
-            vec3 mid = vec3(0.5, 0.75, 1.0);
-            vec3 edge = vec3(0.2, 0.35, 0.8);
+            vec3 core = vec3(0.95, 0.8, 1.0);
+            vec3 mid = vec3(0.6, 0.3, 0.95);
+            vec3 edge = vec3(0.25, 0.1, 0.55);
             vec3 col = mix(edge, mid, soft);
             col = mix(col, core, soft * soft * (0.6 + shocks * 0.4));
             col *= turb;
@@ -247,7 +253,7 @@ export default function AsciiBlackHole() {
         void main() {
           float fres = pow(1.0 - abs(dot(vNormal, vec3(0.0, 0.0, 1.0))), 2.2);
           float pulse = 0.7 + 0.3 * sin(uTime * 1.5);
-          vec3 col = vec3(1.0, 0.75, 0.35) * fres * pulse;
+          vec3 col = vec3(0.7, 0.35, 1.0) * fres * pulse;
           gl_FragColor = vec4(col, fres * 0.55);
         }
       `,
@@ -275,7 +281,7 @@ export default function AsciiBlackHole() {
     const sparkGeo = new THREE.BufferGeometry()
     sparkGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
     const sparkMat = new THREE.PointsMaterial({
-      color: 0xffddaa,
+      color: 0xcc88ff,
       size: 0.045,
       transparent: true,
       opacity: 0.85,
