@@ -82,9 +82,9 @@ export default function Nebula() {
 
           vec3 col = vec3(0.0);
           float trans = 1.0;
-          float t = jitter * 0.4;
+          float t = jitter * 0.18;
 
-          for (int i = 0; i < 18; i++) {
+          for (int i = 0; i < 28; i++) {
             vec3 p = ro + rd * t;
             // Spiral vortices, same idea as the black hole disk
             float r = length(p.xz);
@@ -93,8 +93,8 @@ export default function Nebula() {
             vec3 sp = twisted * 0.35
               + uSeed
               + vec3(uTime * 0.015, uTime * 0.006, -uTime * 0.01);
-            float d = fbm(sp);
-            d = smoothstep(0.4, 0.72, d);
+            float d = fbm(sp) * 0.7 + fbm(sp * 1.7 + 3.1) * 0.3;
+            d = smoothstep(0.38, 0.62, d);
             // Fade at the edges of the volume
             float edge = 1.0 - smoothstep(4.5, 7.5, length(p));
             d *= edge;
@@ -112,7 +112,7 @@ export default function Nebula() {
               trans *= absorb;
               if (trans < 0.04) break;
             }
-            t += 0.45;
+            t += 0.28;
             if (t > 16.0) break;
           }
 
