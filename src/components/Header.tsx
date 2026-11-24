@@ -8,6 +8,7 @@ const menuItems = [
   { label: "Fish", href: "#fish" },
   { label: "Black Hole", href: "#blackhole" },
   { label: "Ocean", href: "#ocean" },
+  { label: "Nebula", href: "#nebula" },
   { label: "Frogs", href: "#frogs" },
   { label: "Snow", href: "#snow" },
   { label: "Physics", href: "#physics" },
