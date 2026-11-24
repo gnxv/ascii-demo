@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 
 export default function AsciiJellyfish() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const visible = useRef(true);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -36,7 +37,13 @@ export default function AsciiJellyfish() {
     const bellChars = ["~", "≈", "∿", "∼", "·", "•"];
     const tentChars = ["~", "∼", "∿", "≈", "·"];
 
+    const io = new IntersectionObserver(
+      ([e]) => { visible.current = e.isIntersecting },
+      { threshold: 0.02 }
+    )
+    io.observe(canvas)
     const draw = () => {
+      if (!visible.current) { raf = requestAnimationFrame(draw); return }
       t += 0.016;
       ctx.fillStyle = "#04040a";
       ctx.fillRect(0, 0, w, h);
@@ -100,6 +107,7 @@ export default function AsciiJellyfish() {
     window.addEventListener("resize", onResize);
 
     return () => {
+      io.disconnect()
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", onResize);
     };
