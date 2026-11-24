@@ -74,11 +74,11 @@ export default function AsciiBlackHole() {
           float ang = atan(hit.z, hit.x);
           float safeR = max(r, 0.2);
 
-          // Keplerian angular speed + slow radial inflow
+          // Keplerian angular speed + looped radial inflow (does not drift forever)
           float omega = 3.4 / pow(safeR, 1.5);
-          float inflow = uTime * 0.12 / safeR;          // material drifts inward
           float phase = ang - uTime * omega;
-          float rAdv = safeR + inflow * 0.35;           // advected radius
+          float inflow = fract(uTime * 0.04 / safeR);   // loops 0..1
+          float rAdv = safeR + inflow * 0.8;            // bounded drift
 
           // Spiral arms (density waves)
           float spiral = sin(phase * 2.0 + log(safeR) * 3.5) * 0.5 + 0.5;
@@ -144,6 +144,12 @@ export default function AsciiBlackHole() {
             if (pos.y * next.y < 0.0) {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
+              // Skip grazing crossings — they make broken geometry on the far side
+              float approach = abs(vel.y);
+              if (approach < 0.08) {
+                pos = next;
+                continue;
+              }
               vec3 dc = diskColor(hit, vel);
               float a = clamp(length(dc) * 0.55, 0.0, 0.85);
               col += (1.0 - alpha) * dc;
