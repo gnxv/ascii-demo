@@ -137,13 +137,10 @@ export default function OceanStorm() {
           vec3 V = normalize(cameraPosition - vWorld);
           float fres = pow(1.0 - max(dot(N, V), 0.0), 4.0);
 
-          vec3 deep = vec3(0.05, 0.1, 0.18);
-          vec3 sky = vec3(0.42, 0.5, 0.6);
-          vec3 col = mix(deep, sky, fres * 0.75);
-
-          // Subsurface on thin crests
-          float sss = pow(max(vHeight, 0.0), 1.4) * 0.35;
-          col += vec3(0.05, 0.18, 0.2) * sss;
+          vec3 deep = vec3(0.03, 0.05, 0.09);
+          vec3 col = deep;
+          // Sky reflection only while lightning lights the scene
+          col = mix(col, vec3(0.45, 0.52, 0.62), fres * uFlash * 0.8);
 
           // Foam only where the surface compresses (wave about to fold / break).
           // Jacobian < 1 means vertices are bunching — that is the breaking face,
@@ -153,16 +150,11 @@ export default function OceanStorm() {
           float steep = 1.0 - abs(N.y);
           foam *= smoothstep(0.05, 0.35, steep);
 
-          vec3 L = normalize(vec3(-0.3, 0.65, 0.2));
-          vec3 R = reflect(-L, N);
-          float ndv = max(dot(N, V), 0.0);
-          // Two lobes: a soft sheen and a tighter glint, both stronger at grazing angles
-          float sheen = pow(max(dot(R, V), 0.0), 12.0);
-          float glint = pow(max(dot(R, V), 0.0), 90.0);
-          float spec = (sheen * 0.25 + glint * 0.7) * mix(0.4, 1.0, 1.0 - ndv);
-          col += vec3(0.75, 0.82, 0.95) * spec;
-
-          col += vec3(0.45, 0.55, 0.7) * uFlash * 0.65;
+          // Specular and fill only from the strike
+          vec3 L = normalize(vec3(0.05, 0.9, 0.1));
+          float spec = pow(max(dot(reflect(-L, N), V), 0.0), 20.0);
+          col += vec3(0.85, 0.9, 1.0) * spec * uFlash;
+          col += vec3(0.4, 0.5, 0.65) * uFlash * 0.5;
 
           float dist = length(vWorld.xz);
           col *= mix(1.0, 0.4, smoothstep(10.0, 40.0, dist));
