@@ -68,8 +68,7 @@ export default function AsciiBlackHole() {
         // Realistic-ish accretion disk sample
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
-          float far = smoothstep(-1.0, 2.0, hit.z);
-          float outer = mix(8.0, 14.0, far);
+          float outer = 8.0;
           if (r < 1.6 || r > outer) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
