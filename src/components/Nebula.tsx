@@ -90,7 +90,18 @@ export default function Nebula() {
             float r = length(p.xz);
             float ang = atan(p.z, p.x) + uTime * 0.04 + r * 0.55;
             vec3 twisted = vec3(cos(ang) * r, p.y, sin(ang) * r);
-            vec3 sp = twisted * 0.35
+            // A few funnels: gas spins tighter near each center
+            vec3 funnel = vec3(0.0);
+            for (int k = 0; k < 3; k++) {
+              vec3 c = vec3(sin(float(k) * 2.1 + uSeed.x), 0.3 * sin(float(k)), cos(float(k) * 1.7)) * 2.2;
+              vec3 q = twisted - c;
+              float qr = length(q.xz) + 0.3;
+              float spin = uTime * 0.3 + 2.4 / qr;
+              float ca = cos(spin), sa = sin(spin);
+              q.xz = mat2(ca, -sa, sa, ca) * q.xz;
+              funnel += q * exp(-qr * 0.6);
+            }
+            vec3 sp = (twisted + funnel) * 0.35
               + uSeed
               + vec3(uTime * 0.015, uTime * 0.006, -uTime * 0.01);
             float d = fbm(sp);
