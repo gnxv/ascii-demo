@@ -133,7 +133,7 @@ export default function AsciiBlackHole() {
           // Simple ray march with gravitational deflection
           vec3 pos = ro;
           vec3 vel = rd;
-          const int STEPS = 110;
+          const int STEPS = 64;
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
@@ -144,7 +144,7 @@ export default function AsciiBlackHole() {
             vel += acc * 0.4;
             vel = normalize(vel) * length(rd);
 
-            vec3 next = pos + vel * 0.16;
+            vec3 next = pos + vel * 0.28;
 
             // Plane crossing = disk hit
             if (pos.y * next.y < 0.0) {
