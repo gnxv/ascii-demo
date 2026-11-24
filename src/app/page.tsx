@@ -3,6 +3,7 @@
 import AsciiJellyfish from "@/components/AsciiJellyfish";
 import ThreeFishSchool from "@/components/ThreeFishSchool";
 import AsciiBlackHole from "@/components/AsciiBlackHole";
+import OceanStorm from "@/components/OceanStorm";
 import AsciiFrogs from "@/components/AsciiFrogs";
 
 import { useEffect, useRef } from "react";
@@ -249,6 +250,7 @@ export default function Home() {
     { id: "jellyfish", title: "", component: <AsciiJellyfish />, bg: "bg-black" },
     { id: "fish", title: "", component: <ThreeFishSchool />, bg: "bg-black" },
     { id: "blackhole", title: "", component: <AsciiBlackHole />, bg: "bg-black" },
+    { id: "ocean", title: "", component: <OceanStorm />, bg: "bg-black" },
     { id: "frogs", title: "", component: <AsciiFrogs />, bg: "bg-green-950" },
     { id: "snow", title: "", component: <Snow />, bg: "bg-slate-950" },
     { id: "physics", title: "", component: <Physics />, bg: "bg-zinc-950" },
