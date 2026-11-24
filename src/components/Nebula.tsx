@@ -78,7 +78,6 @@ export default function Nebula() {
           vec3 ro = cameraPosition;
           vec3 rd = normalize(vWorld - ro);
           float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-          vec3 star = vec3(0.4, 0.1, 0.0);
 
           vec3 col = vec3(0.0);
           float trans = 1.0;
@@ -86,24 +85,26 @@ export default function Nebula() {
 
           for (int i = 0; i < 18; i++) {
             vec3 p = ro + rd * t;
-            vec3 sp = p * 0.38 + vec3(uTime * 0.012, uTime * 0.005, -uTime * 0.01);
-            // Noise warped by noise — filaments
-            vec3 warp = vec3(fbm(sp + 4.1), fbm(sp + 9.7), fbm(sp + 2.3));
-            float n = fbm(sp + warp * 1.1);
-            // Soft sphere: densest at the center, wispy at the edge. No hard ball.
-            float falloff = 1.0 - smoothstep(0.0, 5.5, length(p));
-            float d = max(n * falloff * 1.6 - 0.28, 0.0);
+            // Slow flow — the gas breathes and drifts
+            vec3 sp = p * 0.35
+              + vec3(uTime * 0.02, uTime * 0.008, -uTime * 0.015)
+              + vec3(sin(uTime * 0.05 + p.y), 0.0, cos(uTime * 0.04));
+            float d = fbm(sp);
+            d = smoothstep(0.4, 0.72, d);
+            // Fade at the edges of the volume
+            float edge = 1.0 - smoothstep(4.5, 7.5, length(p));
+            d *= edge;
 
             if (d > 0.02) {
-              vec3 hAlpha = vec3(0.95, 0.14, 0.16);
-              vec3 oxygen = vec3(0.16, 0.48, 0.78);
-              vec3 emit = mix(oxygen, hAlpha, smoothstep(0.05, 0.45, d));
-              // Gentle glow from the center, not a point
-              float near = exp(-length(p) * 0.35);
-              emit *= 0.6 + near * 0.7;
+              // Hydrogen core, oxygen in the thinner gas
+              vec3 hAlpha = vec3(0.85, 0.18, 0.22);
+              vec3 oxygen = vec3(0.25, 0.55, 0.75);
+              vec3 dust = vec3(0.35, 0.12, 0.28);
+              vec3 emit = mix(oxygen, hAlpha, smoothstep(0.15, 0.55, d));
+              emit = mix(emit, dust, smoothstep(0.55, 0.85, d) * 0.4);
 
-              float absorb = exp(-d * 1.1);
-              col += trans * emit * d * 0.7;
+              float absorb = exp(-d * 0.7);
+              col += trans * emit * d * 0.55;
               trans *= absorb;
               if (trans < 0.04) break;
             }
@@ -112,8 +113,8 @@ export default function Nebula() {
           }
 
           float alpha = 1.0 - trans;
-          if (alpha < 0.015) discard;
-          gl_FragColor = vec4(col, alpha);
+          if (alpha < 0.02) discard;
+          gl_FragColor = vec4(col, alpha * 0.92);
         }
       `,
     })
@@ -121,7 +122,7 @@ export default function Nebula() {
     scene.add(nebula)
 
     // A few bright stars embedded in the gas
-    const starN = 220
+    const starN = 80
     const starPos = new Float32Array(starN * 3)
     for (let i = 0; i < starN; i++) {
       starPos[i * 3] = (Math.random() - 0.5) * 10
@@ -131,12 +132,11 @@ export default function Nebula() {
     const starGeo = new THREE.BufferGeometry()
     starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3))
     const starMat = new THREE.PointsMaterial({
-      color: 0xfff6ea,
-      size: 0.025,
+      color: 0xfff4e0,
+      size: 0.04,
       transparent: true,
-      opacity: 0.9,
+      opacity: 0.85,
       depthWrite: false,
-      sizeAttenuation: true,
     })
     scene.add(new THREE.Points(starGeo, starMat))
 
