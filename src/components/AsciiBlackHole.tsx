@@ -5,6 +5,7 @@ import * as THREE from 'three'
 
 export default function AsciiBlackHole() {
   const mountRef = useRef<HTMLDivElement>(null)
+  const visible = useRef(true)
 
   useEffect(() => {
     const container = mountRef.current
@@ -177,8 +178,14 @@ export default function AsciiBlackHole() {
     let time = 0
     let animId: number
 
+    const io = new IntersectionObserver(
+      ([e]) => { visible.current = e.isIntersecting },
+      { threshold: 0.02 }
+    )
+    io.observe(container)
     const animate = () => {
       animId = requestAnimationFrame(animate)
+      if (!visible.current) return
       time += 0.016
       mat.uniforms.uTime.value = time
       renderer.render(scene, camera)
@@ -194,6 +201,7 @@ export default function AsciiBlackHole() {
     window.addEventListener('resize', onResize)
 
     return () => {
+      io.disconnect()
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
