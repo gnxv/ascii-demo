@@ -45,6 +45,7 @@ export default function OceanStorm() {
         uTime: { value: 0 },
         uFlash: { value: 0 },
         uWind: { value: 0 },
+        uFlashPos: { value: new THREE.Vector3(0, 12, -8) },
         uSplash: { value: Array.from({ length: 12 }, () => new THREE.Vector3(0, -1, 0)) },
       },
       vertexShader: /* glsl */ `
@@ -189,6 +190,93 @@ export default function OceanStorm() {
     ocean.rotation.x = -Math.PI / 2
     scene.add(ocean)
 
+    // Volumetric storm clouds. Almost invisible until a strike lights them.
+    const cloudGeo = new THREE.BoxGeometry(80, 14, 80)
+    const cloudMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      side: THREE.BackSide,
+      uniforms: {
+        uTime: { value: 0 },
+        uFlash: { value: 0 },
+        uFlashPos: { value: new THREE.Vector3(0, 12, -8) },
+      },
+      vertexShader: /* glsl */ `
+        varying vec3 vWorld;
+        varying vec3 vLocal;
+        void main() {
+          vLocal = position;
+          vec4 w = modelMatrix * vec4(position, 1.0);
+          vWorld = w.xyz;
+          gl_Position = projectionMatrix * viewMatrix * w;
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uTime;
+        uniform float uFlash;
+        uniform vec3 uFlashPos;
+        varying vec3 vWorld;
+        varying vec3 vLocal;
+
+        float hash(vec3 p) {
+          p = fract(p * 0.1031);
+          p += dot(p, p.yzx + 33.33);
+          return fract((p.x + p.y) * p.z);
+        }
+        float noise(vec3 p) {
+          vec3 i = floor(p);
+          vec3 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          return mix(
+            mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x),
+                mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
+            mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x),
+                mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
+            f.z);
+        }
+        float fbm(vec3 p) {
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 4; i++) {
+            v += a * noise(p);
+            p = p * 2.1 + 11.7;
+            a *= 0.5;
+          }
+          return v;
+        }
+
+        void main() {
+          vec3 ro = cameraPosition;
+          vec3 rd = normalize(vWorld - ro);
+          // March through the cloud slab
+          float density = 0.0;
+          float lit = 0.0;
+          vec3 p = ro;
+          for (int i = 0; i < 24; i++) {
+            p += rd * 1.6;
+            if (p.y < 8.0 || p.y > 22.0) continue;
+            vec3 sp = p * 0.07 + vec3(uTime * 0.012, 0.0, uTime * 0.008);
+            float d = fbm(sp);
+            d = smoothstep(0.48, 0.72, d);
+            density += d * 0.08;
+            float dist = length(p - uFlashPos);
+            lit += d * exp(-dist * 0.12);
+          }
+          density = clamp(density, 0.0, 1.0);
+          // Dark mass, revealed by the strike
+          vec3 col = vec3(0.02, 0.03, 0.05) * density;
+          col += vec3(0.55, 0.65, 0.8) * lit * uFlash * 0.55;
+          float alpha = density * (0.15 + uFlash * 0.75);
+          if (alpha < 0.01) discard;
+          gl_FragColor = vec4(col, alpha);
+        }
+      `,
+    })
+    const clouds = new THREE.Mesh(cloudGeo, cloudMat)
+    clouds.position.y = 15
+    scene.add(clouds)
+
+
     // Rain as streaks (each drop is a short line), denser near the camera
     const N = 2200
     const rainPos = new Float32Array(N * 2 * 3)
@@ -260,7 +348,8 @@ export default function OceanStorm() {
       }
       scene.add(group)
       bolts.push(group)
-      flash.position.set(end.x, 5, end.z)
+      flash.position.set(end.x, 8, end.z)
+      oceanMat.uniforms.uFlashPos.value.set(end.x, 10, end.z)
       flash.intensity = 12
       oceanMat.uniforms.uFlash.value = 1
       setTimeout(() => {
@@ -286,6 +375,9 @@ export default function OceanStorm() {
       time += 0.016
 
       oceanMat.uniforms.uTime.value = time
+      cloudMat.uniforms.uTime.value = time
+      cloudMat.uniforms.uFlash.value = oceanMat.uniforms.uFlash.value
+      cloudMat.uniforms.uFlashPos.value.copy(oceanMat.uniforms.uFlashPos.value)
       const splashes = oceanMat.uniforms.uSplash.value as THREE.Vector3[]
       for (let i = 0; i < 12; i++) {
         if (splashes[i].z >= 0) {
@@ -353,6 +445,8 @@ export default function OceanStorm() {
       renderer.dispose()
       oceanGeo.dispose()
       oceanMat.dispose()
+      cloudGeo.dispose()
+      cloudMat.dispose()
       rainGeo.dispose()
       rainMat.dispose()
       bolts.forEach((g) => {
