@@ -86,24 +86,21 @@ export default function Nebula() {
 
           for (int i = 0; i < 18; i++) {
             vec3 p = ro + rd * t;
-            vec3 sp = p * 0.32 + vec3(uTime * 0.015, uTime * 0.006, -uTime * 0.012);
-            // Noise warped by noise — filaments instead of blobs
+            vec3 sp = p * 0.38 + vec3(uTime * 0.012, uTime * 0.005, -uTime * 0.01);
+            // Noise warped by noise — filaments
             vec3 warp = vec3(fbm(sp + 4.1), fbm(sp + 9.7), fbm(sp + 2.3));
-            float d = fbm(sp + warp * 1.4);
-            d = smoothstep(0.46, 0.7, d);
-            float core = 1.0 - smoothstep(0.0, 3.2, length(p - star));
-            float edge = 1.0 - smoothstep(4.5, 7.4, length(p));
-            d = max(d, core * 0.85) * edge;
+            float n = fbm(sp + warp * 1.1);
+            // Soft sphere: densest at the center, wispy at the edge. No hard ball.
+            float falloff = 1.0 - smoothstep(0.0, 5.5, length(p));
+            float d = max(n * falloff * 1.6 - 0.28, 0.0);
 
-            if (d > 0.015) {
-              // Dense core hydrogen red, thin gas oxygen blue
-              vec3 hAlpha = vec3(0.95, 0.16, 0.18);
-              vec3 oxygen = vec3(0.18, 0.5, 0.8);
-              vec3 emit = mix(oxygen, hAlpha, smoothstep(0.08, 0.5, d));
-              // Embedded star lights the gas around it
-              float near = exp(-length(p - star) * 0.55);
-              emit += vec3(1.0, 0.85, 0.6) * near * 0.8;
-              emit *= mix(0.35, 1.4, d);
+            if (d > 0.02) {
+              vec3 hAlpha = vec3(0.95, 0.14, 0.16);
+              vec3 oxygen = vec3(0.16, 0.48, 0.78);
+              vec3 emit = mix(oxygen, hAlpha, smoothstep(0.05, 0.45, d));
+              // Gentle glow from the center, not a point
+              float near = exp(-length(p) * 0.35);
+              emit *= 0.6 + near * 0.7;
 
               float absorb = exp(-d * 1.1);
               col += trans * emit * d * 0.7;
@@ -142,12 +139,6 @@ export default function Nebula() {
       sizeAttenuation: true,
     })
     scene.add(new THREE.Points(starGeo, starMat))
-    const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.018, 8, 8),
-      new THREE.MeshBasicMaterial({ color: 0xffe8c0 })
-    )
-    core.position.set(0.4, 0.1, 0)
-    scene.add(core)
 
     let time = 0
     let animId: number
