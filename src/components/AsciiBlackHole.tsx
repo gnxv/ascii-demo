@@ -40,37 +40,77 @@ export default function AsciiBlackHole() {
         uniform vec2 uResolution;
         varying vec2 vUv;
 
-        // Keplerian disk sample
+        // Hash noise
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+        float noise(vec2 p) {
+          vec2 i = floor(p);
+          vec2 f = fract(p);
+          f = f * f * (3.0 - 2.0 * f);
+          float a = hash(i);
+          float b = hash(i + vec2(1.0, 0.0));
+          float c = hash(i + vec2(0.0, 1.0));
+          float d = hash(i + vec2(1.0, 1.0));
+          return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+        }
+        float fbm(vec2 p) {
+          float v = 0.0;
+          float a = 0.5;
+          for (int i = 0; i < 4; i++) {
+            v += a * noise(p);
+            p *= 2.1;
+            a *= 0.5;
+          }
+          return v;
+        }
+
+        // Realistic-ish accretion disk sample
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
-          if (r < 1.6 || r > 8.0) return vec3(0.0);
+          float far = smoothstep(-1.0, 2.0, hit.z);
+          float outer = mix(8.0, 14.0, far);
+          if (r < 1.6 || r > outer) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
-          // Keplerian: omega ~ r^-1.5
-          float omega = 3.2 / pow(r, 1.5);
-          float phase = ang - uTime * omega;
+          float safeR = max(r, 0.2);
 
-          // Density waves from differential rotation
-          float bands = sin(phase * 4.0 + r * 6.0) * 0.5 + 0.5;
-          float fine = sin(phase * 9.0 + r * 14.0) * 0.5 + 0.5;
-          float flow = mix(pow(bands, 1.1), fine, 0.4);
+          // Keplerian angular speed + slow radial inflow
+          float omega = 3.4 / pow(safeR, 1.5);
+          float inflow = uTime * 0.12 / safeR;          // material drifts inward
+          float phase = ang - uTime * omega;
+          float rAdv = safeR + inflow * 0.35;           // advected radius
+
+          // Spiral arms (density waves)
+          float spiral = sin(phase * 2.0 + log(safeR) * 3.5) * 0.5 + 0.5;
+
+          // Turbulent noise advected with the flow
+          vec2 flowUv = vec2(phase * 1.6, rAdv * 2.2);
+          float turb = fbm(flowUv);
+          float fine = fbm(flowUv * 2.4 + 4.0);
+
+          // Clumps / hot knots
+          float clumps = pow(noise(vec2(phase * 3.0, rAdv * 5.0)), 2.2);
+
+          float flow = spiral * 0.35 + turb * 0.4 + fine * 0.15 + clumps * 0.25;
+          flow = clamp(flow, 0.0, 1.0);
 
           // Temperature: hot inside, cooler outside
-          float t = smoothstep(8.0, 1.8, r);
-          vec3 hot = vec3(1.0, 0.85, 0.45);
-          vec3 mid = vec3(1.0, 0.4, 0.08);
-          vec3 cool = vec3(0.6, 0.05, 0.01);
-          vec3 col = mix(cool, mid, smoothstep(0.0, 0.5, t));
-          col = mix(col, hot, smoothstep(0.5, 1.0, t));
+          float t = smoothstep(outer, 1.8, r);
+          vec3 hot = vec3(1.0, 0.88, 0.5);
+          vec3 mid = vec3(1.0, 0.38, 0.06);
+          vec3 cool = vec3(0.55, 0.04, 0.01);
+          vec3 col = mix(cool, mid, smoothstep(0.0, 0.45, t));
+          col = mix(col, hot, smoothstep(0.45, 1.0, t));
 
-          // Doppler: approaching side brighter
+          // Doppler beaming
           vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
-          float beta = 0.45 / sqrt(r);
-          float doppler = 1.0 + 1.8 * beta * dot(tangent, -rayDir);
-          doppler = clamp(doppler, 0.3, 2.2);
+          float beta = 0.5 / sqrt(safeR);
+          float doppler = 1.0 + 2.0 * beta * dot(tangent, -rayDir);
+          doppler = clamp(doppler, 0.25, 2.4);
 
-          float intensity = (0.35 + flow * 0.85) * doppler;
-          intensity *= smoothstep(1.6, 2.2, r) * smoothstep(8.0, 6.5, r);
+          float intensity = (0.25 + flow * 1.05) * doppler;
+          intensity *= smoothstep(1.6, 2.1, r) * smoothstep(outer, outer * 0.82, r);
 
           return col * intensity;
         }
@@ -95,8 +135,8 @@ export default function AsciiBlackHole() {
             if (r < 1.05) break; // captured
 
             // Deflection toward center (approx Schwarzschild)
-            vec3 acc = -1.5 * pos / pow(r, 4.0);
-            vel += acc * 0.35;
+            vec3 acc = -1.8 * pos / pow(r, 4.0);
+            vel += acc * 0.4;
             vel = normalize(vel) * length(rd);
 
             vec3 next = pos + vel * 0.28;
