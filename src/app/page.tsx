@@ -256,11 +256,11 @@ export default function Home() {
   }, []);
 
   const scenes = [
+    { id: "nebula", title: "", component: <Nebula />, bg: "bg-black" },
     { id: "jellyfish", title: "", component: <AsciiJellyfish />, bg: "bg-black" },
     { id: "fish", title: "", component: <ThreeFishSchool />, bg: "bg-black" },
     { id: "blackhole", title: "", component: <AsciiBlackHole />, bg: "bg-black" },
     { id: "ocean", title: "", component: <OceanStorm />, bg: "bg-black" },
-    { id: "nebula", title: "", component: <Nebula />, bg: "bg-black" },
     { id: "frogs", title: "", component: <AsciiFrogs />, bg: "bg-green-950" },
     { id: "snow", title: "", component: <Snow />, bg: "bg-slate-950" },
     { id: "physics", title: "", component: <Physics />, bg: "bg-zinc-950" },
