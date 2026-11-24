@@ -5,6 +5,7 @@ import * as THREE from 'three'
 
 export default function OceanStorm() {
   const mountRef = useRef<HTMLDivElement>(null)
+  const visible = useRef(true)
 
   useEffect(() => {
     const container = mountRef.current
@@ -390,8 +391,14 @@ export default function OceanStorm() {
     let nextFlash = 2 + Math.random() * 4
     let animId: number
 
+    const io = new IntersectionObserver(
+      ([e]) => { visible.current = e.isIntersecting },
+      { threshold: 0.02 }
+    )
+    io.observe(container)
     const animate = () => {
       animId = requestAnimationFrame(animate)
+      if (!visible.current) return
       time += 0.016
 
       oceanMat.uniforms.uTime.value = time
@@ -460,6 +467,7 @@ export default function OceanStorm() {
     window.addEventListener('resize', onResize)
 
     return () => {
+      io.disconnect()
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
