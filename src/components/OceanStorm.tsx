@@ -21,7 +21,7 @@ export default function OceanStorm() {
       120
     )
     // Low, looking across the surface to the horizon
-    camera.position.set(0, 3.5, 18)
+    camera.position.set(0, 2.2, 12)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -44,12 +44,15 @@ export default function OceanStorm() {
     const oceanGeo = new THREE.PlaneGeometry(90, 90, 200, 200)
     const oceanMat = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
-      uniforms: { uTime: { value: 0 }, uFlash: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uFlash: { value: 0 }, uWind: { value: 0 } },
       vertexShader: /* glsl */ `
         uniform float uTime;
+        uniform float uWind;
         varying vec3 vWorld;
         varying vec3 vNormal;
         varying float vHeight;
+        varying float vJacobian;
+        varying vec2 vXZ;
 
         // Catlike Coding / GPU Gems Gerstner.
         // steepness sum stays under ~0.8 so crests do not fold.
@@ -82,16 +85,23 @@ export default function OceanStorm() {
           vec3 tangent = vec3(1.0, 0.0, 0.0);
           vec3 binormal = vec3(0.0, 0.0, 1.0);
 
+          // Wind slowly rotates the whole field
+          float wa = uWind;
+          mat2 wr = mat2(cos(wa), -sin(wa), sin(wa), cos(wa));
           vec3 disp = vec3(0.0);
-          // Irrational wavelength ratios (golden-ish) so the pattern does not tile.
-          // Directions spread around wind, steepness sum ~0.75.
-          disp += gerstner(xz, normalize(vec2(1.0, 0.15)), 0.11, 27.4, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(0.62, 0.78)), 0.10, 16.9, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(-0.18, 0.98)), 0.09, 10.5, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(0.85, -0.42)), 0.08, 6.5, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(-0.55, 0.48)), 0.07, 4.0, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(0.22, -0.97)), 0.06, 2.47, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(-0.9, -0.2)), 0.05, 2.6, uTime, tangent, binormal);
+          // 12 waves, irrational lengths, steepness sum ~0.72
+          disp += gerstner(xz, wr * normalize(vec2(1.0, 0.12)), 0.09, 31.0, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.7, 0.7)), 0.08, 19.3, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(-0.15, 1.0)), 0.07, 12.1, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.9, -0.35)), 0.07, 7.6, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(-0.5, 0.55)), 0.06, 4.7, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.2, -0.95)), 0.05, 2.9, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(-0.85, -0.25)), 0.05, 3.6, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.45, 0.4)), 0.04, 5.8, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(-0.3, -0.8)), 0.04, 8.9, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.15, 0.2)), 0.04, 15.7, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.55, -0.7)), 0.035, 6.3, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(-0.65, 0.15)), 0.03, 23.5, uTime, tangent, binormal);
 
           // disp.y is up. Plane local Z is 0; after rotation local Y is horizontal,
           // so put vertical into local Z (which becomes world Y after -PI/2).
@@ -101,6 +111,9 @@ export default function OceanStorm() {
           p.z += disp.y;
 
           vHeight = disp.y;
+          vXZ = xz;
+          // Jacobian: how much the surface is compressed (foam where it folds)
+          vJacobian = tangent.x * binormal.z - tangent.z * binormal.x;
           vec4 world = modelMatrix * vec4(p, 1.0);
           vWorld = world.xyz;
 
@@ -114,32 +127,57 @@ export default function OceanStorm() {
         }
       `,
       fragmentShader: /* glsl */ `
+        uniform float uTime;
         uniform float uFlash;
         varying vec3 vWorld;
         varying vec3 vNormal;
         varying float vHeight;
+        varying float vJacobian;
+        varying vec2 vXZ;
+
+        float hash(vec2 p) {
+          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
 
         void main() {
           vec3 N = normalize(vNormal);
+          // Fine ripple in the normal only — does not move the mesh
+          float rip = sin(vXZ.x * 3.1 + uTime * 1.4) * sin(vXZ.y * 2.7 - uTime * 1.1);
+          N = normalize(N + vec3(rip, 0.0, rip * 0.6) * 0.12);
+
           vec3 V = normalize(cameraPosition - vWorld);
           float fres = pow(1.0 - max(dot(N, V), 0.0), 4.0);
 
-          vec3 deep = vec3(0.06, 0.12, 0.2);
-          vec3 sky = vec3(0.45, 0.52, 0.6);
-          vec3 col = mix(deep, sky, fres * 0.7);
+          vec3 deep = vec3(0.05, 0.1, 0.18);
+          vec3 sky = vec3(0.42, 0.5, 0.6);
+          vec3 col = mix(deep, sky, fres * 0.75);
 
-          // foam only on crests
-          float foam = smoothstep(0.4, 0.75, vHeight);
-          col = mix(col, vec3(0.72, 0.78, 0.84), foam * 0.5);
+          // Subsurface on thin crests
+          float sss = pow(max(vHeight, 0.0), 1.4) * 0.35;
+          col += vec3(0.05, 0.18, 0.2) * sss;
+
+          // Jacobian foam: compressed regions
+          float foam = smoothstep(0.55, 0.2, vJacobian);
+          foam *= smoothstep(0.15, 0.5, vHeight);
+          // rain rings
+          float rings = 0.0;
+          for (int i = 0; i < 5; i++) {
+            vec2 c = vec2(hash(vec2(float(i), 1.3)), hash(vec2(float(i), 2.7))) * 24.0 - 12.0;
+            float age = fract(uTime * 0.35 + hash(vec2(float(i), 4.1)));
+            float d = length(vXZ - c);
+            float r = age * 2.4;
+            rings += smoothstep(0.12, 0.0, abs(d - r)) * (1.0 - age);
+          }
+          col = mix(col, vec3(0.75, 0.8, 0.86), clamp(foam * 0.65 + rings * 0.4, 0.0, 1.0));
 
           vec3 L = normalize(vec3(-0.35, 0.8, 0.25));
-          float spec = pow(max(dot(reflect(-L, N), V), 0.0), 64.0);
-          col += vec3(0.65, 0.75, 0.9) * spec * 0.45;
+          float spec = pow(max(dot(reflect(-L, N), V), 0.0), 80.0);
+          col += vec3(0.7, 0.8, 0.95) * spec * 0.5;
 
           col += vec3(0.45, 0.55, 0.7) * uFlash * 0.65;
 
           float dist = length(vWorld.xz);
-          col *= mix(1.0, 0.25, smoothstep(10.0, 42.0, dist));
+          col *= mix(1.0, 0.3, smoothstep(8.0, 38.0, dist));
 
           gl_FragColor = vec4(col, 1.0);
         }
@@ -217,6 +255,7 @@ export default function OceanStorm() {
       time += 0.016
 
       oceanMat.uniforms.uTime.value = time
+      oceanMat.uniforms.uWind.value = time * 0.03
 
       if (time > nextFlash) {
         spawnBolt()
@@ -243,7 +282,7 @@ export default function OceanStorm() {
       rainGeo.attributes.position.needsUpdate = true
 
       camera.position.x = Math.sin(time * 0.04) * 1.4
-      camera.lookAt(0, 1.6, -30)
+      camera.lookAt(0, 0.8, -18)
       renderer.render(scene, camera)
     }
     animate()
