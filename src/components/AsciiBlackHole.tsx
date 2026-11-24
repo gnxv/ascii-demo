@@ -144,12 +144,6 @@ export default function AsciiBlackHole() {
             if (pos.y * next.y < 0.0) {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
-              // Skip grazing crossings — they make broken geometry on the far side
-              float approach = abs(vel.y);
-              if (approach < 0.08) {
-                pos = next;
-                continue;
-              }
               vec3 dc = diskColor(hit, vel);
               float a = clamp(length(dc) * 0.55, 0.0, 0.85);
               col += (1.0 - alpha) * dc;
