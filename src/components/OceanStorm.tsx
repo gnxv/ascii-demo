@@ -297,6 +297,31 @@ export default function OceanStorm() {
     clouds.position.y = 15
     scene.add(clouds)
 
+    // Rain as faint wind-tilted streaks
+    const N = 2200
+    const rainPos = new Float32Array(N * 2 * 3)
+    const rain: { x: number; y: number; z: number; v: number; len: number }[] = []
+    for (let i = 0; i < N; i++) {
+      const near = Math.random() < 0.65
+      rain.push({
+        x: (Math.random() - 0.5) * (near ? 16 : 40),
+        y: Math.random() * 16,
+        z: (Math.random() - 0.5) * (near ? 16 : 40) - (near ? 2 : 8),
+        v: near ? 14 + Math.random() * 5 : 11 + Math.random() * 4,
+        len: near ? 0.28 + Math.random() * 0.12 : 0.16 + Math.random() * 0.08,
+      })
+    }
+    const rainGeo = new THREE.BufferGeometry()
+    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3))
+    const rainMat = new THREE.LineBasicMaterial({
+      color: 0x9aabbc,
+      transparent: true,
+      opacity: 0.12,
+      depthWrite: false,
+    })
+    const rainLines = new THREE.LineSegments(rainGeo, rainMat)
+    scene.add(rainLines)
+
     const bolts: THREE.Group[] = []
 
     function displace(a: THREE.Vector3, b: THREE.Vector3, depth: number, out: THREE.Vector3[]) {
