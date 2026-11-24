@@ -127,6 +127,9 @@ export default function AsciiBlackHole() {
 
         void main() {
           vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.2;
+          // 45 degrees counter-clockwise
+          float a = -0.785398;
+          uv = mat2(cos(a), -sin(a), sin(a), cos(a)) * uv;
 
           // Camera slightly above disk plane, looking at origin
           vec3 ro = vec3(0.0, 1.15, -14.0);
@@ -215,6 +218,29 @@ export default function AsciiBlackHole() {
         inset: 0,
         background: '#000',
       }}
-    />
+    >
+      <div
+        style={{
+          position: 'absolute',
+          inset: 0,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          pointerEvents: 'none',
+          gap: '0.5vw',
+          fontFamily: 'Georgia, "Times New Roman", serif',
+          fontWeight: 600,
+          fontSize: '18vw',
+          letterSpacing: '-0.04em',
+          color: '#f2efe6',
+          lineHeight: 1,
+          userSelect: 'none',
+        }}
+      >
+        <span>GR</span>
+        <span style={{ width: '16vw', display: 'inline-block' }} />
+        <span>K</span>
+      </div>
+    </div>
   )
 }
