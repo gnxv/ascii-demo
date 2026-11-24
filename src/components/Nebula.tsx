@@ -21,9 +21,10 @@ export default function Nebula() {
       80
     )
     camera.position.set(0, 0, 8)
+    camera.lookAt(0, 0, 0)
 
     const renderer = new THREE.WebGLRenderer({
-      antialias: true,
+      antialias: false,
       powerPreference: 'high-performance',
     })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1))
@@ -84,7 +85,7 @@ export default function Nebula() {
           float trans = 1.0;
           float t = jitter * 0.18;
 
-          for (int i = 0; i < 20; i++) {
+          for (int i = 0; i < 18; i++) {
             vec3 p = ro + rd * t;
             // Gentle spiral drift
             float r = length(p.xz);
@@ -206,7 +207,6 @@ export default function Nebula() {
       faint.mat.uniforms.uTime.value = time
       mid.mat.uniforms.uTime.value = time
       bright.mat.uniforms.uTime.value = time
-      camera.lookAt(0, 0, 0)
       renderer.render(scene, camera)
     }
     animate()
