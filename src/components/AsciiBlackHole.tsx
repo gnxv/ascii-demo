@@ -74,35 +74,31 @@ export default function AsciiBlackHole() {
           float ang = atan(hit.z, hit.x);
           float safeR = max(r, 0.2);
 
-          // Keplerian speed. Dual-phase advection so shear resets instead of winding forever.
+          // Keplerian dual-phase. Weight of a phase is 0 exactly when it wraps,
+          // so the pattern never jumps and never shears more than half an orbit.
           float omega = 3.4 / pow(safeR, 1.5);
-          float period = 6.28318 / omega;                 // one orbit
-          float tCycle = mod(uTime, period);
-          float blend = smoothstep(0.35, 0.5, tCycle / period)
-                      * (1.0 - smoothstep(0.85, 1.0, tCycle / period));
-          // two phases half a period apart
-          float phaseA = ang - omega * tCycle;
-          float phaseB = ang - omega * (tCycle + period * 0.5);
-
-          float inflow = fract(uTime * 0.04 / safeR);
-          float rAdv = safeR + inflow * 0.8;
+          float turns = uTime * omega / 6.28318;
+          float p1 = fract(turns);
+          float p2 = fract(turns + 0.5);
+          float w = abs(p1 - 0.5) * 2.0;   // 1 at wrap of p1, 0 at wrap of p2
 
           float farSide = smoothstep(-0.5, 2.5, hit.z);
 
-          // Spiral uses the live phase
-          float spiral = sin(phaseA * 2.0 + log(safeR) * 3.5) * 0.5 + 0.5;
+          // Spiral on the continuous wrapped phase
+          float spiral = sin((ang - p1 * 6.28318) * 2.0 + log(safeR) * 3.5) * 0.5 + 0.5;
 
-          // Crossfaded noise — never shears more than half an orbit
-          vec2 uvA = vec2(phaseA * 1.6, rAdv * 2.2);
-          vec2 uvB = vec2(phaseB * 1.6, rAdv * 2.2);
-          float turb = mix(fbm(uvA), fbm(uvB), blend);
-          float fine = mix(fbm(uvA * 2.4 + 4.0), fbm(uvB * 2.4 + 4.0), blend);
+          // Fixed radial coord — no accumulating / jumping r
+          float rCoord = safeR * 0.45;
+          vec2 uvA = vec2(ang / 6.28318 - p1, rCoord);
+          vec2 uvB = vec2(ang / 6.28318 - p2, rCoord);
+          float turb = mix(fbm(uvA * 3.0), fbm(uvB * 3.0), w);
+          float fine = mix(fbm(uvA * 6.0 + 4.0), fbm(uvB * 6.0 + 4.0), w);
           fine = mix(fine, turb, farSide * 0.85);
 
           float clumps = mix(
-            pow(noise(vec2(phaseA * 3.0, rAdv * 5.0)), 2.2),
-            pow(noise(vec2(phaseB * 3.0, rAdv * 5.0)), 2.2),
-            blend
+            pow(noise(uvA * 5.0), 2.2),
+            pow(noise(uvB * 5.0), 2.2),
+            w
           );
           clumps *= mix(1.0, 0.35, farSide);
 
