@@ -232,7 +232,7 @@ export default function OceanStorm() {
         }
         float fbm(vec3 p) {
           float v = 0.0, a = 0.5;
-          for (int i = 0; i < 3; i++) {
+          for (int i = 0; i < 2; i++) {
             v += a * noise(p);
             p = p * 2.03 + 17.1;
             a *= 0.5;
@@ -267,16 +267,14 @@ export default function OceanStorm() {
           float trans = 1.0;
           vec3 L = normalize(uFlashPos - ro);
 
-          for (int i = 0; i < 22; i++) {
+          for (int i = 0; i < 12; i++) {
             vec3 p = ro + rd * t;
             if (p.y < 9.0 || p.y > 21.0 || t > 70.0) break;
             float d = densityAt(p);
             if (d > 0.01) {
               // Short march toward the strike for self-shadow / rim
               float shadow = 0.0;
-              for (int j = 1; j <= 2; j++) {
-                shadow += densityAt(p + L * float(j) * 1.4);
-              }
+              shadow += densityAt(p + L * 2.0);
               float energy = exp(-shadow * 1.6);
               // Beer-Lambert: absorb as we go
               float absorb = exp(-d * 0.9);
@@ -285,7 +283,7 @@ export default function OceanStorm() {
               trans *= absorb;
               if (trans < 0.05) break;
             }
-            t += 0.7;
+            t += 1.3;
           }
 
           // Barely there without a strike, lit volume when it hits
