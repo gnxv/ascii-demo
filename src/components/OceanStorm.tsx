@@ -295,7 +295,7 @@ export default function OceanStorm() {
 
       oceanMat.uniforms.uTime.value = time
       oceanMat.uniforms.uWind.value = time * 0.03
-      oceanMat.uniforms.uGust.value = 0.85 + 0.2 * sin(time * 0.17) * sin(time * 0.07)
+      oceanMat.uniforms.uGust.value = 0.85 + 0.2 * Math.sin(time * 0.17) * Math.sin(time * 0.07)
 
       if (time > nextFlash) {
         spawnBolt()
