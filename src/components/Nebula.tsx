@@ -36,7 +36,7 @@ export default function Nebula() {
       transparent: true,
       depthWrite: false,
       side: THREE.BackSide,
-      uniforms: { uTime: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uSeed: { value: new THREE.Vector3(Math.random() * 100, Math.random() * 100, Math.random() * 100) } },
       vertexShader: /* glsl */ `
         varying vec3 vWorld;
         void main() {
@@ -47,6 +47,7 @@ export default function Nebula() {
       `,
       fragmentShader: /* glsl */ `
         uniform float uTime;
+        uniform vec3 uSeed;
         varying vec3 vWorld;
 
         float hash(vec3 p) {
@@ -90,6 +91,7 @@ export default function Nebula() {
             float ang = atan(p.z, p.x) + uTime * 0.04 + r * 0.55;
             vec3 twisted = vec3(cos(ang) * r, p.y, sin(ang) * r);
             vec3 sp = twisted * 0.35
+              + uSeed
               + vec3(uTime * 0.015, uTime * 0.006, -uTime * 0.01);
             float d = fbm(sp);
             d = smoothstep(0.4, 0.72, d);
@@ -161,7 +163,7 @@ export default function Nebula() {
     const mid = makeStars(60, 14, 0.06, 0xffe8c8, 0.9)
     const bright = makeStars(12, 10, 0.11, 0xffffff, 1)
 
-    let time = 0
+    let time = Math.random() * 200
     let animId: number
     const io = new IntersectionObserver(
       ([e]) => { visible.current = e.isIntersecting },
