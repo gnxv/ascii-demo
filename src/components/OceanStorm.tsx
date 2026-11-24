@@ -11,16 +11,17 @@ export default function OceanStorm() {
     if (!container) return
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x070b14)
-    scene.fog = new THREE.FogExp2(0x070b14, 0.018)
+    scene.background = new THREE.Color(0x0a1018)
+    scene.fog = new THREE.FogExp2(0x0a1018, 0.012)
 
     const camera = new THREE.PerspectiveCamera(
-      50,
+      45,
       container.clientWidth / container.clientHeight,
       0.1,
-      80
+      120
     )
-    camera.position.set(0, 2.4, 10)
+    // Low, looking across the surface to the horizon
+    camera.position.set(0, 3.5, 18)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -30,37 +31,36 @@ export default function OceanStorm() {
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
-    scene.add(new THREE.AmbientLight(0x223344, 0.4))
-    const moon = new THREE.DirectionalLight(0x8899bb, 0.6)
-    moon.position.set(-8, 12, 4)
+    scene.add(new THREE.AmbientLight(0x334455, 0.5))
+    const moon = new THREE.DirectionalLight(0x99aacc, 0.7)
+    moon.position.set(-6, 14, 6)
     scene.add(moon)
 
-    // Lightning flash light
-    const flash = new THREE.PointLight(0xddeeff, 0, 40)
-    flash.position.set(0, 10, -6)
+    const flash = new THREE.PointLight(0xddeeff, 0, 50)
+    flash.position.set(0, 12, -4)
     scene.add(flash)
 
-    // Ocean — proper Gerstner with deep-water dispersion
-    const oceanGeo = new THREE.PlaneGeometry(80, 80, 220, 220)
+    // Plane in XY, rotated to XZ. Waves must sample position.xy (local), not .xz.
+    const oceanGeo = new THREE.PlaneGeometry(90, 90, 200, 200)
     const oceanMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 }, uFlash: { value: 0 } },
       vertexShader: /* glsl */ `
         uniform float uTime;
         varying vec3 vWorld;
         varying vec3 vNormal;
-        varying float vCrest;
+        varying float vHeight;
 
-        // dir, steepness, wavelength
-        vec3 gerstner(vec3 p, vec2 dir, float steep, float lambda, float t, inout vec3 tangent, inout vec3 binormal) {
+        // Catlike Coding / GPU Gems Gerstner.
+        // steepness sum stays under ~0.8 so crests do not fold.
+        vec3 gerstner(vec2 xz, vec2 dir, float steep, float lambda, float t,
+                      inout vec3 tangent, inout vec3 binormal) {
           float k = 6.2831853 / lambda;
-          float c = sqrt(9.8 / k);                 // deep-water phase speed
-          float f = k * (dot(dir, p.xz) - c * t);
+          float c = sqrt(9.8 / k);                 // deep-water dispersion
+          float f = k * (dot(dir, xz) - c * t);
           float a = steep / k;
           float s = sin(f);
           float co = cos(f);
-          // horizontal + vertical displacement
-          vec3 disp = vec3(dir.x * a * co, a * s, dir.y * a * co);
-          // analytic derivatives for normals
+
           tangent += vec3(
             -dir.x * dir.x * steep * s,
             dir.x * steep * co,
@@ -71,26 +71,42 @@ export default function OceanStorm() {
             dir.y * steep * co,
             -dir.y * dir.y * steep * s
           );
-          return disp;
+
+          return vec3(dir.x * a * co, a * s, dir.y * a * co);
         }
 
         void main() {
-          vec3 p = position;
+          // Plane is XY. After -PI/2 around X, local (x,y) becomes world (x,z).
+          vec2 xz = position.xy;
           vec3 tangent = vec3(1.0, 0.0, 0.0);
           vec3 binormal = vec3(0.0, 0.0, 1.0);
 
-          // 6 waves: long swell -> short chop, directions around wind
-          p += gerstner(position, normalize(vec2(1.0, 0.25)), 0.18, 28.0, uTime, tangent, binormal);
-          p += gerstner(position, normalize(vec2(0.6, 0.8)), 0.15, 16.0, uTime, tangent, binormal);
-          p += gerstner(position, normalize(vec2(-0.3, 1.0)), 0.12, 9.0, uTime, tangent, binormal);
-          p += gerstner(position, normalize(vec2(0.9, -0.4)), 0.14, 5.5, uTime, tangent, binormal);
-          p += gerstner(position, normalize(vec2(-0.7, 0.5)), 0.1, 3.2, uTime, tangent, binormal);
-          p += gerstner(position, normalize(vec2(0.2, -1.0)), 0.07, 1.8, uTime, tangent, binormal);
+          vec3 disp = vec3(0.0);
+          // long swell -> short chop, directions around wind
+          disp += gerstner(xz, normalize(vec2(1.0, 0.2)), 0.16, 22.0, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(0.5, 0.9)), 0.14, 13.0, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(-0.2, 1.0)), 0.12, 8.0, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(0.8, -0.5)), 0.10, 5.0, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(-0.6, 0.4)), 0.08, 3.0, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(0.3, -0.9)), 0.06, 1.8, uTime, tangent, binormal);
 
-          vCrest = p.y;
+          // disp.y is up. Plane local Z is 0; after rotation local Y is horizontal,
+          // so put vertical into local Z (which becomes world Y after -PI/2).
+          vec3 p = position;
+          p.x += disp.x;
+          p.y += disp.z;
+          p.z += disp.y;
+
+          vHeight = disp.y;
           vec4 world = modelMatrix * vec4(p, 1.0);
           vWorld = world.xyz;
-          vNormal = normalize(mat3(modelMatrix) * cross(binormal, tangent));
+
+          // Normal in the same local frame, then to world
+          vec3 nLocal = normalize(cross(binormal, tangent));
+          // remap: local (x, up=z, y) 
+          vec3 n = normalize(vec3(nLocal.x, nLocal.z, nLocal.y));
+          vNormal = normalize(mat3(modelMatrix) * n);
+
           gl_Position = projectionMatrix * viewMatrix * world;
         }
       `,
@@ -98,30 +114,29 @@ export default function OceanStorm() {
         uniform float uFlash;
         varying vec3 vWorld;
         varying vec3 vNormal;
-        varying float vCrest;
+        varying float vHeight;
 
         void main() {
           vec3 N = normalize(vNormal);
           vec3 V = normalize(cameraPosition - vWorld);
-          float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+          float fres = pow(1.0 - max(dot(N, V), 0.0), 4.0);
 
-          // One water colour. Height only adds a little foam, not a two-tone flag.
-          vec3 water = vec3(0.03, 0.07, 0.12);
-          vec3 sky = vec3(0.35, 0.4, 0.48);
-          vec3 col = mix(water, sky, fres * 0.6);
+          vec3 deep = vec3(0.02, 0.05, 0.1);
+          vec3 sky = vec3(0.32, 0.38, 0.46);
+          vec3 col = mix(deep, sky, fres * 0.7);
 
-          float foam = smoothstep(0.55, 0.95, vCrest);
-          col = mix(col, vec3(0.75, 0.8, 0.85), foam * 0.55);
+          // foam only on crests
+          float foam = smoothstep(0.4, 0.75, vHeight);
+          col = mix(col, vec3(0.72, 0.78, 0.84), foam * 0.5);
 
-          // specular from moon-ish light
-          vec3 L = normalize(vec3(-0.4, 0.7, 0.3));
-          float spec = pow(max(dot(reflect(-L, N), V), 0.0), 48.0);
-          col += vec3(0.6, 0.7, 0.85) * spec * 0.5;
+          vec3 L = normalize(vec3(-0.35, 0.8, 0.25));
+          float spec = pow(max(dot(reflect(-L, N), V), 0.0), 64.0);
+          col += vec3(0.65, 0.75, 0.9) * spec * 0.45;
 
-          col += vec3(0.4, 0.5, 0.65) * uFlash * 0.7;
+          col += vec3(0.45, 0.55, 0.7) * uFlash * 0.65;
 
-          float fade = smoothstep(40.0, 14.0, length(vWorld.xz));
-          col *= 0.3 + fade * 0.7;
+          float dist = length(vWorld.xz);
+          col *= mix(1.0, 0.25, smoothstep(10.0, 42.0, dist));
 
           gl_FragColor = vec4(col, 1.0);
         }
@@ -132,15 +147,15 @@ export default function OceanStorm() {
     scene.add(ocean)
 
     // Rain
-    const N = 800
+    const N = 700
     const rainPos = new Float32Array(N * 3)
     const rain: { x: number; y: number; z: number; v: number }[] = []
     for (let i = 0; i < N; i++) {
       rain.push({
-        x: (Math.random() - 0.5) * 40,
-        y: Math.random() * 18,
-        z: (Math.random() - 0.5) * 40,
-        v: 8 + Math.random() * 6,
+        x: (Math.random() - 0.5) * 36,
+        y: Math.random() * 16,
+        z: (Math.random() - 0.5) * 36,
+        v: 9 + Math.random() * 5,
       })
       rainPos[i * 3] = rain[i].x
       rainPos[i * 3 + 1] = rain[i].y
@@ -149,35 +164,33 @@ export default function OceanStorm() {
     const rainGeo = new THREE.BufferGeometry()
     rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3))
     const rainMat = new THREE.PointsMaterial({
-      color: 0xaabbcc,
-      size: 0.06,
+      color: 0xbbccdd,
+      size: 0.05,
       transparent: true,
-      opacity: 0.45,
+      opacity: 0.4,
       depthWrite: false,
     })
     const rainPoints = new THREE.Points(rainGeo, rainMat)
     scene.add(rainPoints)
 
-    // Lightning bolts (simple additive lines, spawned on flash)
     const bolts: THREE.Line[] = []
-
     function spawnBolt() {
       const pts: THREE.Vector3[] = []
-      let x = (Math.random() - 0.5) * 16
-      let y = 12
-      let z = -8 - Math.random() * 10
+      let x = (Math.random() - 0.5) * 18
+      let y = 14
+      let z = -6 - Math.random() * 12
       pts.push(new THREE.Vector3(x, y, z))
-      for (let i = 0; i < 14; i++) {
-        x += (Math.random() - 0.5) * 1.4
-        y -= 0.7 + Math.random() * 0.5
-        z += (Math.random() - 0.5) * 0.6
+      for (let i = 0; i < 12; i++) {
+        x += (Math.random() - 0.5) * 1.6
+        y -= 0.8 + Math.random() * 0.4
+        z += (Math.random() - 0.5) * 0.7
         pts.push(new THREE.Vector3(x, y, z))
       }
       const geo = new THREE.BufferGeometry().setFromPoints(pts)
       const mat = new THREE.LineBasicMaterial({
-        color: 0xddeeff,
+        color: 0xeef5ff,
         transparent: true,
-        opacity: 0.95,
+        opacity: 0.9,
         blending: THREE.AdditiveBlending,
       })
       const line = new THREE.Line(geo, mat)
@@ -189,7 +202,7 @@ export default function OceanStorm() {
         mat.dispose()
         const idx = bolts.indexOf(line)
         if (idx >= 0) bolts.splice(idx, 1)
-      }, 180)
+      }, 160)
     }
 
     let time = 0
@@ -202,25 +215,23 @@ export default function OceanStorm() {
 
       oceanMat.uniforms.uTime.value = time
 
-      // Lightning timing
       if (time > nextFlash) {
         spawnBolt()
-        if (Math.random() > 0.5) setTimeout(spawnBolt, 80)
-        flash.intensity = 8 + Math.random() * 6
+        if (Math.random() > 0.45) setTimeout(spawnBolt, 70)
+        flash.intensity = 7 + Math.random() * 5
         oceanMat.uniforms.uFlash.value = 1
-        nextFlash = time + 2.5 + Math.random() * 5
+        nextFlash = time + 2.8 + Math.random() * 5
       }
-      flash.intensity *= 0.82
-      oceanMat.uniforms.uFlash.value *= 0.85
+      flash.intensity *= 0.8
+      oceanMat.uniforms.uFlash.value *= 0.84
 
-      // Rain
       for (let i = 0; i < N; i++) {
         rain[i].y -= rain[i].v * 0.016
-        rain[i].x += 0.4 * 0.016
+        rain[i].x += 0.5 * 0.016
         if (rain[i].y < 0) {
-          rain[i].y = 16 + Math.random() * 4
-          rain[i].x = (Math.random() - 0.5) * 40
-          rain[i].z = (Math.random() - 0.5) * 40
+          rain[i].y = 14 + Math.random() * 4
+          rain[i].x = (Math.random() - 0.5) * 36
+          rain[i].z = (Math.random() - 0.5) * 36
         }
         rainPos[i * 3] = rain[i].x
         rainPos[i * 3 + 1] = rain[i].y
@@ -228,8 +239,8 @@ export default function OceanStorm() {
       }
       rainGeo.attributes.position.needsUpdate = true
 
-      camera.position.x = Math.sin(time * 0.05) * 1.2
-      camera.lookAt(0, 1.2, -20)
+      camera.position.x = Math.sin(time * 0.04) * 1.4
+      camera.lookAt(0, 1.6, -30)
       renderer.render(scene, camera)
     }
     animate()
@@ -267,7 +278,7 @@ export default function OceanStorm() {
         height: '100%',
         position: 'absolute',
         inset: 0,
-        background: '#070b14',
+        background: '#0a1018',
       }}
     />
   )
