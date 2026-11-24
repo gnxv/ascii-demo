@@ -5,6 +5,7 @@ import * as THREE from 'three'
 
 export default function Nebula() {
   const mountRef = useRef<HTMLDivElement>(null)
+  const visible = useRef(true)
 
   useEffect(() => {
     const container = mountRef.current
@@ -141,8 +142,14 @@ export default function Nebula() {
 
     let time = 0
     let animId: number
+    const io = new IntersectionObserver(
+      ([e]) => { visible.current = e.isIntersecting },
+      { threshold: 0.02 }
+    )
+    io.observe(container)
     const animate = () => {
       animId = requestAnimationFrame(animate)
+      if (!visible.current) return
       time += 0.016
       mat.uniforms.uTime.value = time
       camera.position.x = Math.sin(time * 0.05) * 0.6
@@ -160,6 +167,7 @@ export default function Nebula() {
     window.addEventListener('resize', onResize)
 
     return () => {
+      io.disconnect()
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
