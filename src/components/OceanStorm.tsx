@@ -40,60 +40,93 @@ export default function OceanStorm() {
     flash.position.set(0, 10, -6)
     scene.add(flash)
 
-    // Ocean
-    const oceanGeo = new THREE.PlaneGeometry(60, 60, 180, 180)
+    // Ocean — proper Gerstner with deep-water dispersion
+    const oceanGeo = new THREE.PlaneGeometry(80, 80, 220, 220)
     const oceanMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 }, uFlash: { value: 0 } },
       vertexShader: /* glsl */ `
         uniform float uTime;
-        varying vec3 vPos;
-        varying float vH;
+        varying vec3 vWorld;
+        varying vec3 vNormal;
+        varying float vCrest;
 
-        vec3 gerstner(vec2 p, float t) {
-          // 4 waves
-          vec2 d1 = normalize(vec2(1.0, 0.3));
-          vec2 d2 = normalize(vec2(-0.4, 1.0));
-          vec2 d3 = normalize(vec2(0.7, -0.6));
-          vec2 d4 = normalize(vec2(-0.2, -1.0));
-          float h = 0.0;
-          vec2 disp = vec2(0.0);
-          // amp, freq, speed, steep
-          h += 0.55 * sin(dot(d1, p) * 0.35 + t * 0.8);
-          disp += d1 * 0.25 * cos(dot(d1, p) * 0.35 + t * 0.8);
-          h += 0.35 * sin(dot(d2, p) * 0.55 + t * 1.1);
-          disp += d2 * 0.12 * cos(dot(d2, p) * 0.55 + t * 1.1);
-          h += 0.18 * sin(dot(d3, p) * 0.9 + t * 1.4);
-          h += 0.1 * sin(dot(d4, p) * 1.4 + t * 1.8);
-          return vec3(disp.x, h, disp.y);
+        // dir, steepness, wavelength
+        vec3 gerstner(vec3 p, vec2 dir, float steep, float lambda, float t, inout vec3 tangent, inout vec3 binormal) {
+          float k = 6.2831853 / lambda;
+          float c = sqrt(9.8 / k);                 // deep-water phase speed
+          float f = k * (dot(dir, p.xz) - c * t);
+          float a = steep / k;
+          float s = sin(f);
+          float co = cos(f);
+          // horizontal + vertical displacement
+          vec3 disp = vec3(dir.x * a * co, a * s, dir.y * a * co);
+          // analytic derivatives for normals
+          tangent += vec3(
+            -dir.x * dir.x * steep * s,
+            dir.x * steep * co,
+            -dir.x * dir.y * steep * s
+          );
+          binormal += vec3(
+            -dir.x * dir.y * steep * s,
+            dir.y * steep * co,
+            -dir.y * dir.y * steep * s
+          );
+          return disp;
         }
 
         void main() {
-          vec3 pos = position;
-          vec3 g = gerstner(pos.xz, uTime);
-          pos.x += g.x;
-          pos.y += g.y;
-          pos.z += g.z;
-          vH = g.y;
-          vPos = pos;
-          gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
+          vec3 p = position;
+          vec3 tangent = vec3(1.0, 0.0, 0.0);
+          vec3 binormal = vec3(0.0, 0.0, 1.0);
+
+          // 6 waves: long swell -> short chop, directions around wind
+          p += gerstner(position, normalize(vec2(1.0, 0.25)), 0.28, 28.0, uTime, tangent, binormal);
+          p += gerstner(position, normalize(vec2(0.6, 0.8)), 0.22, 16.0, uTime, tangent, binormal);
+          p += gerstner(position, normalize(vec2(-0.3, 1.0)), 0.18, 9.0, uTime, tangent, binormal);
+          p += gerstner(position, normalize(vec2(0.9, -0.4)), 0.14, 5.5, uTime, tangent, binormal);
+          p += gerstner(position, normalize(vec2(-0.7, 0.5)), 0.1, 3.2, uTime, tangent, binormal);
+          p += gerstner(position, normalize(vec2(0.2, -1.0)), 0.07, 1.8, uTime, tangent, binormal);
+
+          vCrest = p.y;
+          vec4 world = modelMatrix * vec4(p, 1.0);
+          vWorld = world.xyz;
+          vNormal = normalize(mat3(modelMatrix) * cross(binormal, tangent));
+          gl_Position = projectionMatrix * viewMatrix * world;
         }
       `,
       fragmentShader: /* glsl */ `
         uniform float uFlash;
-        varying float vH;
-        varying vec3 vPos;
+        varying vec3 vWorld;
+        varying vec3 vNormal;
+        varying float vCrest;
+
         void main() {
-          vec3 deep = vec3(0.02, 0.06, 0.12);
-          vec3 mid = vec3(0.05, 0.12, 0.2);
-          vec3 foam = vec3(0.55, 0.62, 0.7);
-          float crest = smoothstep(0.35, 0.7, vH);
-          vec3 col = mix(deep, mid, smoothstep(-0.4, 0.3, vH));
-          col = mix(col, foam, crest * 0.65);
-          // lightning tint
-          col += vec3(0.35, 0.45, 0.6) * uFlash * 0.8;
-          // distance fade
-          float fade = smoothstep(28.0, 12.0, length(vPos.xz));
-          col *= 0.35 + fade * 0.65;
+          vec3 N = normalize(vNormal);
+          vec3 V = normalize(cameraPosition - vWorld);
+          float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
+
+          vec3 deep = vec3(0.015, 0.04, 0.09);
+          vec3 mid = vec3(0.04, 0.1, 0.16);
+          vec3 sky = vec3(0.25, 0.3, 0.38);
+
+          float h = smoothstep(-0.6, 0.8, vCrest);
+          vec3 col = mix(deep, mid, h);
+          col = mix(col, sky, fres * 0.55);
+
+          // foam on sharp crests
+          float foam = smoothstep(0.45, 0.85, vCrest) * smoothstep(0.2, 0.7, 1.0 - N.y);
+          col = mix(col, vec3(0.7, 0.75, 0.8), foam * 0.7);
+
+          // specular from moon-ish light
+          vec3 L = normalize(vec3(-0.4, 0.7, 0.3));
+          float spec = pow(max(dot(reflect(-L, N), V), 0.0), 48.0);
+          col += vec3(0.6, 0.7, 0.85) * spec * 0.5;
+
+          col += vec3(0.4, 0.5, 0.65) * uFlash * 0.7;
+
+          float fade = smoothstep(40.0, 14.0, length(vWorld.xz));
+          col *= 0.3 + fade * 0.7;
+
           gl_FragColor = vec4(col, 1.0);
         }
       `,
