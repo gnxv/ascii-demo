@@ -175,7 +175,7 @@ export default function OceanStorm() {
             float age = s.z;
             if (age < 0.0) continue;
             float d = length(vXZ - s.xy);
-            float r = age * 1.1;
+            float r = age * 0.45;
             float ring = smoothstep(0.14, 0.0, abs(d - r)) * (1.0 - age) * (1.0 - age);
             ripples += ring;
           }
