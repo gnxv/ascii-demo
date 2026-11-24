@@ -85,23 +85,18 @@ export default function OceanStorm() {
           vec3 tangent = vec3(1.0, 0.0, 0.0);
           vec3 binormal = vec3(0.0, 0.0, 1.0);
 
-          // Wind slowly rotates the whole field
+          // Wind slowly rotates the field. Spectrum is a geometric progression
+          // so wavelengths do not lock. Steepness sum = 0.60 (safe, no folding).
           float wa = uWind;
           mat2 wr = mat2(cos(wa), -sin(wa), sin(wa), cos(wa));
           vec3 disp = vec3(0.0);
-          // 12 waves, irrational lengths, steepness sum ~0.72
-          disp += gerstner(xz, wr * normalize(vec2(1.0, 0.12)), 0.09, 31.0, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(0.7, 0.7)), 0.08, 19.3, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(-0.15, 1.0)), 0.07, 12.1, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(0.9, -0.35)), 0.07, 7.6, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(-0.5, 0.55)), 0.06, 4.7, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(0.2, -0.95)), 0.05, 2.9, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(-0.85, -0.25)), 0.05, 3.6, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(0.45, 0.4)), 0.04, 5.8, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(-0.3, -0.8)), 0.04, 8.9, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(0.15, 0.2)), 0.04, 15.7, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(0.55, -0.7)), 0.035, 6.3, uTime, tangent, binormal);
-          disp += gerstner(xz, wr * normalize(vec2(-0.65, 0.15)), 0.03, 23.5, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(1.0, 0.15)), 0.14, 26.0, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.55, 0.85)), 0.11, 16.0, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(-0.2, 1.0)), 0.09, 9.9, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.85, -0.4)), 0.08, 6.1, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(-0.6, 0.45)), 0.07, 3.8, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(0.25, -0.95)), 0.06, 2.35, uTime, tangent, binormal);
+          disp += gerstner(xz, wr * normalize(vec2(-0.9, -0.25)), 0.05, 4.7, uTime, tangent, binormal);
 
           // disp.y is up. Plane local Z is 0; after rotation local Y is horizontal,
           // so put vertical into local Z (which becomes world Y after -PI/2).
@@ -117,10 +112,11 @@ export default function OceanStorm() {
           vec4 world = modelMatrix * vec4(p, 1.0);
           vWorld = world.xyz;
 
-          // Normal in the same local frame, then to world
-          vec3 nLocal = normalize(cross(binormal, tangent));
-          // remap: local (x, up=z, y) 
-          vec3 n = normalize(vec3(nLocal.x, nLocal.z, nLocal.y));
+          // tangent/binormal are dP/dx, dP/dz in (x, up, z).
+          // Local plane: x stays x, horizontal y gets dz, up goes to local z.
+          vec3 dPx = vec3(tangent.x, tangent.z, tangent.y);
+          vec3 dPy = vec3(binormal.x, binormal.z, binormal.y);
+          vec3 n = normalize(cross(dPx, dPy));
           vNormal = normalize(mat3(modelMatrix) * n);
 
           gl_Position = projectionMatrix * viewMatrix * world;
@@ -134,10 +130,6 @@ export default function OceanStorm() {
         varying float vHeight;
         varying float vJacobian;
         varying vec2 vXZ;
-
-        float hash(vec2 p) {
-          return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
-        }
 
         void main() {
           vec3 N = normalize(vNormal);
@@ -156,19 +148,10 @@ export default function OceanStorm() {
           float sss = pow(max(vHeight, 0.0), 1.4) * 0.35;
           col += vec3(0.05, 0.18, 0.2) * sss;
 
-          // Jacobian foam: compressed regions
-          float foam = smoothstep(0.55, 0.2, vJacobian);
-          foam *= smoothstep(0.15, 0.5, vHeight);
-          // rain rings
-          float rings = 0.0;
-          for (int i = 0; i < 5; i++) {
-            vec2 c = vec2(hash(vec2(float(i), 1.3)), hash(vec2(float(i), 2.7))) * 24.0 - 12.0;
-            float age = fract(uTime * 0.35 + hash(vec2(float(i), 4.1)));
-            float d = length(vXZ - c);
-            float r = age * 2.4;
-            rings += smoothstep(0.12, 0.0, abs(d - r)) * (1.0 - age);
-          }
-          col = mix(col, vec3(0.75, 0.8, 0.86), clamp(foam * 0.65 + rings * 0.4, 0.0, 1.0));
+          // Jacobian foam: surface compressed below 1
+          float foam = smoothstep(0.75, 0.35, vJacobian);
+          foam *= smoothstep(0.1, 0.45, vHeight);
+          col = mix(col, vec3(0.75, 0.8, 0.86), foam * 0.55);
 
           vec3 L = normalize(vec3(-0.35, 0.8, 0.25));
           float spec = pow(max(dot(reflect(-L, N), V), 0.0), 80.0);
