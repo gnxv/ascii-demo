@@ -43,6 +43,7 @@ export default function OceanStorm() {
     // Plane in XY, rotated to XZ. Waves must sample position.xy (local), not .xz.
     const oceanGeo = new THREE.PlaneGeometry(90, 90, 200, 200)
     const oceanMat = new THREE.ShaderMaterial({
+      side: THREE.DoubleSide,
       uniforms: { uTime: { value: 0 }, uFlash: { value: 0 } },
       vertexShader: /* glsl */ `
         uniform float uTime;
@@ -90,11 +91,7 @@ export default function OceanStorm() {
           disp += gerstner(xz, normalize(vec2(0.85, -0.42)), 0.08, 6.5, uTime, tangent, binormal);
           disp += gerstner(xz, normalize(vec2(-0.55, 0.48)), 0.07, 4.0, uTime, tangent, binormal);
           disp += gerstner(xz, normalize(vec2(0.22, -0.97)), 0.06, 2.47, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(-0.9, -0.2)), 0.05, 1.53, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(0.4, 0.55)), 0.04, 0.95, uTime, tangent, binormal);
-          // low-amplitude noise so crests never line up into a grid
-          float n = sin(xz.x * 0.37 + uTime * 0.6) * sin(xz.y * 0.29 - uTime * 0.45);
-          disp.y += n * 0.08;
+          disp += gerstner(xz, normalize(vec2(-0.9, -0.2)), 0.05, 2.6, uTime, tangent, binormal);
 
           // disp.y is up. Plane local Z is 0; after rotation local Y is horizontal,
           // so put vertical into local Z (which becomes world Y after -PI/2).
@@ -127,8 +124,8 @@ export default function OceanStorm() {
           vec3 V = normalize(cameraPosition - vWorld);
           float fres = pow(1.0 - max(dot(N, V), 0.0), 4.0);
 
-          vec3 deep = vec3(0.02, 0.05, 0.1);
-          vec3 sky = vec3(0.32, 0.38, 0.46);
+          vec3 deep = vec3(0.06, 0.12, 0.2);
+          vec3 sky = vec3(0.45, 0.52, 0.6);
           vec3 col = mix(deep, sky, fres * 0.7);
 
           // foam only on crests
