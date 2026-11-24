@@ -148,9 +148,13 @@ export default function OceanStorm() {
           float sss = pow(max(vHeight, 0.0), 1.4) * 0.35;
           col += vec3(0.05, 0.18, 0.2) * sss;
 
-          // Foam where the surface compresses, plus a little on tall crests
-          float foam = smoothstep(0.85, 0.4, vJacobian);
-          foam = max(foam, smoothstep(0.35, 0.7, vHeight) * 0.6);
+          // Foam only where the surface compresses (wave about to fold / break).
+          // Jacobian < 1 means vertices are bunching — that is the breaking face,
+          // not the top of the crest.
+          float foam = smoothstep(0.9, 0.45, vJacobian);
+          // Prefer the steep front of the wave, not the flat peak
+          float steep = 1.0 - abs(N.y);
+          foam *= smoothstep(0.05, 0.35, steep);
 
           vec3 L = normalize(vec3(-0.3, 0.65, 0.2));
           vec3 R = reflect(-L, N);
