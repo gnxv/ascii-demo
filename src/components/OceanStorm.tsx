@@ -31,10 +31,7 @@ export default function OceanStorm() {
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
-    scene.add(new THREE.AmbientLight(0x334455, 0.45))
-    const workLight = new THREE.DirectionalLight(0xaabbcc, 0.55)
-    workLight.position.set(-4, 10, 6)
-    scene.add(workLight)
+    scene.add(new THREE.AmbientLight(0x0a1018, 0.2))
 
     const flash = new THREE.PointLight(0xddeeff, 0, 50)
     flash.position.set(0, 12, -4)
