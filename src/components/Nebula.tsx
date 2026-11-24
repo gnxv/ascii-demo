@@ -167,7 +167,7 @@ export default function Nebula() {
           uniform float uSize;
           varying float vTwinkle;
           void main() {
-            vTwinkle = 0.65 + 0.35 * sin(uTime * 1.4 + phase);
+            vTwinkle = 0.82 + 0.18 * sin(uTime * 0.35 + phase);
             vec4 mv = modelViewMatrix * vec4(position, 1.0);
             gl_PointSize = uSize * vTwinkle;
             gl_Position = projectionMatrix * mv;
