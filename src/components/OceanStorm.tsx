@@ -82,13 +82,19 @@ export default function OceanStorm() {
           vec3 binormal = vec3(0.0, 0.0, 1.0);
 
           vec3 disp = vec3(0.0);
-          // long swell -> short chop, directions around wind
-          disp += gerstner(xz, normalize(vec2(1.0, 0.2)), 0.16, 22.0, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(0.5, 0.9)), 0.14, 13.0, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(-0.2, 1.0)), 0.12, 8.0, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(0.8, -0.5)), 0.10, 5.0, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(-0.6, 0.4)), 0.08, 3.0, uTime, tangent, binormal);
-          disp += gerstner(xz, normalize(vec2(0.3, -0.9)), 0.06, 1.8, uTime, tangent, binormal);
+          // Irrational wavelength ratios (golden-ish) so the pattern does not tile.
+          // Directions spread around wind, steepness sum ~0.75.
+          disp += gerstner(xz, normalize(vec2(1.0, 0.15)), 0.11, 27.4, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(0.62, 0.78)), 0.10, 16.9, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(-0.18, 0.98)), 0.09, 10.5, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(0.85, -0.42)), 0.08, 6.5, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(-0.55, 0.48)), 0.07, 4.0, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(0.22, -0.97)), 0.06, 2.47, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(-0.9, -0.2)), 0.05, 1.53, uTime, tangent, binormal);
+          disp += gerstner(xz, normalize(vec2(0.4, 0.55)), 0.04, 0.95, uTime, tangent, binormal);
+          // low-amplitude noise so crests never line up into a grid
+          float n = sin(xz.x * 0.37 + uTime * 0.6) * sin(xz.y * 0.29 - uTime * 0.45);
+          disp.y += n * 0.08;
 
           // disp.y is up. Plane local Z is 0; after rotation local Y is horizontal,
           // so put vertical into local Z (which becomes world Y after -PI/2).
