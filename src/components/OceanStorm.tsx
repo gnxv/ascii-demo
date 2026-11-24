@@ -175,11 +175,11 @@ export default function OceanStorm() {
             float age = s.z;
             if (age < 0.0) continue;
             float d = length(vXZ - s.xy);
-            float r = age * 1.6;
-            float ring = smoothstep(0.08, 0.0, abs(d - r)) * (1.0 - age);
+            float r = age * 1.1;
+            float ring = smoothstep(0.14, 0.0, abs(d - r)) * (1.0 - age) * (1.0 - age);
             ripples += ring;
           }
-          col += vec3(0.55, 0.62, 0.7) * clamp(ripples, 0.0, 1.0) * 0.35;
+          col += vec3(0.4, 0.46, 0.52) * clamp(ripples, 0.0, 1.0) * 0.12;
 
           gl_FragColor = vec4(col, 1.0);
         }
@@ -311,7 +311,7 @@ export default function OceanStorm() {
         d.x += wind * 0.016
         if (d.y < 0) {
           // Only near drops leave a ripple, and only some of them
-          if (Math.abs(d.x) < 10 && Math.abs(d.z) < 10 && Math.random() < 0.25) {
+          if (Math.abs(d.x) < 10 && Math.abs(d.z) < 10 && Math.random() < 0.08) {
             const slot = splashCursor % 12
             splashCursor++
             const arr = oceanMat.uniforms.uSplash.value as THREE.Vector3[]
