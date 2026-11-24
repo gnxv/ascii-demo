@@ -155,7 +155,7 @@ export default function Nebula() {
         blending: THREE.AdditiveBlending,
         uniforms: {
           uTime: { value: 0 },
-          uSize: { value: size * 40 },
+          uSize: { value: size },
           uColor: { value: new THREE.Color(color) },
           uOpacity: { value: opacity },
           uMap: { value: dotTex },
@@ -168,7 +168,7 @@ export default function Nebula() {
           void main() {
             vTwinkle = 0.65 + 0.35 * sin(uTime * 1.4 + phase);
             vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = uSize * vTwinkle * (1.0 / -mv.z);
+            gl_PointSize = uSize * vTwinkle;
             gl_Position = projectionMatrix * mv;
           }
         `,
@@ -187,9 +187,9 @@ export default function Nebula() {
       scene.add(new THREE.Points(geo, mat))
       return { geo, mat }
     }
-    const faint = makeStars(400, 22, 0.03, 0xfff6ea, 0.7)
-    const mid = makeStars(60, 14, 0.06, 0xffe8c8, 0.9)
-    const bright = makeStars(12, 10, 0.11, 0xffffff, 1)
+    const faint = makeStars(400, 22, 2.2, 0xfff6ea, 0.7)
+    const mid = makeStars(60, 14, 3.4, 0xffe8c8, 0.9)
+    const bright = makeStars(12, 10, 5.0, 0xffffff, 1)
 
     let time = Math.random() * 200
     let animId: number
