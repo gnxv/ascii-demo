@@ -39,16 +39,24 @@ function useCanvas(draw: (ctx: CanvasRenderingContext2D, w: number, h: number, t
     };
     canvas.addEventListener("mousemove", onMove);
 
+    let onScreen = true;
+    const io = new IntersectionObserver(
+      ([e]) => { onScreen = e.isIntersecting },
+      { threshold: 0.02 }
+    );
+    io.observe(canvas);
     const loop = () => {
+      raf = requestAnimationFrame(loop);
+      if (!onScreen) return;
       t += 0.016;
       const w = canvas.offsetWidth;
       const h = canvas.offsetHeight;
       draw(ctx, w, h, t, mouse.current);
-      raf = requestAnimationFrame(loop);
     };
     loop();
 
     return () => {
+      io.disconnect();
       cancelAnimationFrame(raf);
       window.removeEventListener("resize", resize);
       canvas.removeEventListener("mousemove", onMove);
