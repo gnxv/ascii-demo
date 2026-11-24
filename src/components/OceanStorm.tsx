@@ -148,19 +148,26 @@ export default function OceanStorm() {
           float sss = pow(max(vHeight, 0.0), 1.4) * 0.35;
           col += vec3(0.05, 0.18, 0.2) * sss;
 
-          // Jacobian foam: surface compressed below 1
-          float foam = smoothstep(0.75, 0.35, vJacobian);
-          foam *= smoothstep(0.1, 0.45, vHeight);
-          col = mix(col, vec3(0.75, 0.8, 0.86), foam * 0.55);
+          // Foam where the surface compresses, plus a little on tall crests
+          float foam = smoothstep(0.85, 0.4, vJacobian);
+          foam = max(foam, smoothstep(0.35, 0.7, vHeight) * 0.6);
 
-          vec3 L = normalize(vec3(-0.35, 0.8, 0.25));
-          float spec = pow(max(dot(reflect(-L, N), V), 0.0), 80.0);
-          col += vec3(0.7, 0.8, 0.95) * spec * 0.5;
+          vec3 L = normalize(vec3(-0.3, 0.65, 0.2));
+          vec3 R = reflect(-L, N);
+          float ndv = max(dot(N, V), 0.0);
+          // Two lobes: a soft sheen and a tighter glint, both stronger at grazing angles
+          float sheen = pow(max(dot(R, V), 0.0), 12.0);
+          float glint = pow(max(dot(R, V), 0.0), 90.0);
+          float spec = (sheen * 0.25 + glint * 0.7) * mix(0.4, 1.0, 1.0 - ndv);
+          col += vec3(0.75, 0.82, 0.95) * spec;
 
           col += vec3(0.45, 0.55, 0.7) * uFlash * 0.65;
 
           float dist = length(vWorld.xz);
-          col *= mix(1.0, 0.3, smoothstep(8.0, 38.0, dist));
+          col *= mix(1.0, 0.4, smoothstep(10.0, 40.0, dist));
+
+          // Foam after the fade so it stays visible
+          col = mix(col, vec3(0.82, 0.86, 0.9), foam * 0.75);
 
           gl_FragColor = vec4(col, 1.0);
         }
