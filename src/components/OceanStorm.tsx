@@ -31,7 +31,10 @@ export default function OceanStorm() {
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
-    scene.add(new THREE.AmbientLight(0x0a1018, 0.2))
+    scene.add(new THREE.AmbientLight(0x334455, 0.45))
+    const workLight = new THREE.DirectionalLight(0xaabbcc, 0.55)
+    workLight.position.set(-4, 10, 6)
+    scene.add(workLight)
 
     const flash = new THREE.PointLight(0xddeeff, 0, 50)
     flash.position.set(0, 12, -4)
@@ -41,7 +44,12 @@ export default function OceanStorm() {
     const oceanGeo = new THREE.PlaneGeometry(90, 90, 200, 200)
     const oceanMat = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
-      uniforms: { uTime: { value: 0 }, uFlash: { value: 0 }, uWind: { value: 0 } },
+      uniforms: {
+        uTime: { value: 0 },
+        uFlash: { value: 0 },
+        uWind: { value: 0 },
+        uSplash: { value: Array.from({ length: 12 }, () => new THREE.Vector3(0, -1, 0)) },
+      },
       vertexShader: /* glsl */ `
         uniform float uTime;
         uniform float uWind;
@@ -122,6 +130,7 @@ export default function OceanStorm() {
       fragmentShader: /* glsl */ `
         uniform float uTime;
         uniform float uFlash;
+        uniform vec3 uSplash[12];
         varying vec3 vWorld;
         varying vec3 vNormal;
         varying float vHeight;
@@ -161,6 +170,19 @@ export default function OceanStorm() {
 
           // Foam after the fade so it stays visible
           col = mix(col, vec3(0.82, 0.86, 0.9), foam * 0.75);
+
+          // Subtle ripples from the last drops that hit. Waves stay dominant.
+          float ripples = 0.0;
+          for (int i = 0; i < 12; i++) {
+            vec3 s = uSplash[i];
+            float age = s.z;
+            if (age < 0.0) continue;
+            float d = length(vXZ - s.xy);
+            float r = age * 1.6;
+            float ring = smoothstep(0.08, 0.0, abs(d - r)) * (1.0 - age);
+            ripples += ring;
+          }
+          col += vec3(0.55, 0.62, 0.7) * clamp(ripples, 0.0, 1.0) * 0.35;
 
           gl_FragColor = vec4(col, 1.0);
         }
@@ -257,6 +279,7 @@ export default function OceanStorm() {
       }, 150)
     }
 
+    let splashCursor = 0
     let time = 0
     let nextFlash = 2 + Math.random() * 4
     let animId: number
@@ -266,6 +289,13 @@ export default function OceanStorm() {
       time += 0.016
 
       oceanMat.uniforms.uTime.value = time
+      const splashes = oceanMat.uniforms.uSplash.value as THREE.Vector3[]
+      for (let i = 0; i < 12; i++) {
+        if (splashes[i].z >= 0) {
+          splashes[i].z += 0.016
+          if (splashes[i].z > 1) splashes[i].z = -1
+        }
+      }
       oceanMat.uniforms.uWind.value = time * 0.03
 
       if (time > nextFlash) {
@@ -283,6 +313,13 @@ export default function OceanStorm() {
         d.y -= d.v * 0.016
         d.x += wind * 0.016
         if (d.y < 0) {
+          // Only near drops leave a ripple, and only some of them
+          if (Math.abs(d.x) < 10 && Math.abs(d.z) < 10 && Math.random() < 0.25) {
+            const slot = splashCursor % 12
+            splashCursor++
+            const arr = oceanMat.uniforms.uSplash.value as THREE.Vector3[]
+            arr[slot].set(d.x, d.z, 0)
+          }
           d.y = 14 + Math.random() * 4
           const near = Math.random() < 0.65
           d.x = (Math.random() - 0.5) * (near ? 16 : 40)
