@@ -74,27 +74,36 @@ export default function AsciiBlackHole() {
           float ang = atan(hit.z, hit.x);
           float safeR = max(r, 0.2);
 
-          // Keplerian angular speed + looped radial inflow (does not drift forever)
+          // Keplerian speed. Dual-phase advection so shear resets instead of winding forever.
           float omega = 3.4 / pow(safeR, 1.5);
-          float phase = ang - uTime * omega;
-          float inflow = fract(uTime * 0.04 / safeR);   // loops 0..1
-          float rAdv = safeR + inflow * 0.8;            // bounded drift
+          float period = 6.28318 / omega;                 // one orbit
+          float tCycle = mod(uTime, period);
+          float blend = smoothstep(0.35, 0.5, tCycle / period)
+                      * (1.0 - smoothstep(0.85, 1.0, tCycle / period));
+          // two phases half a period apart
+          float phaseA = ang - omega * tCycle;
+          float phaseB = ang - omega * (tCycle + period * 0.5);
 
-          // Far side (behind the hole) — smoother sampling, less tearing
+          float inflow = fract(uTime * 0.04 / safeR);
+          float rAdv = safeR + inflow * 0.8;
+
           float farSide = smoothstep(-0.5, 2.5, hit.z);
 
-          // Spiral arms (density waves)
-          float spiral = sin(phase * 2.0 + log(safeR) * 3.5) * 0.5 + 0.5;
+          // Spiral uses the live phase
+          float spiral = sin(phaseA * 2.0 + log(safeR) * 3.5) * 0.5 + 0.5;
 
-          // Turbulent noise advected with the flow
-          vec2 flowUv = vec2(phase * 1.6, rAdv * 2.2);
-          float turb = fbm(flowUv);
-          float fine = fbm(flowUv * 2.4 + 4.0);
-          // Drop fine detail on the far side where hits are noisy
+          // Crossfaded noise — never shears more than half an orbit
+          vec2 uvA = vec2(phaseA * 1.6, rAdv * 2.2);
+          vec2 uvB = vec2(phaseB * 1.6, rAdv * 2.2);
+          float turb = mix(fbm(uvA), fbm(uvB), blend);
+          float fine = mix(fbm(uvA * 2.4 + 4.0), fbm(uvB * 2.4 + 4.0), blend);
           fine = mix(fine, turb, farSide * 0.85);
 
-          // Clumps / hot knots — softer behind
-          float clumps = pow(noise(vec2(phase * 3.0, rAdv * 5.0)), 2.2);
+          float clumps = mix(
+            pow(noise(vec2(phaseA * 3.0, rAdv * 5.0)), 2.2),
+            pow(noise(vec2(phaseB * 3.0, rAdv * 5.0)), 2.2),
+            blend
+          );
           clumps *= mix(1.0, 0.35, farSide);
 
           float flow = spiral * 0.35 + turb * 0.4 + fine * 0.15 + clumps * 0.25;
