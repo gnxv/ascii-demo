@@ -170,32 +170,30 @@ export default function OceanStorm() {
     ocean.rotation.x = -Math.PI / 2
     scene.add(ocean)
 
-    // Rain
-    const N = 700
-    const rainPos = new Float32Array(N * 3)
-    const rain: { x: number; y: number; z: number; v: number }[] = []
+    // Rain as streaks (each drop is a short line), denser near the camera
+    const N = 1400
+    const rainPos = new Float32Array(N * 2 * 3)
+    const rain: { x: number; y: number; z: number; v: number; len: number }[] = []
     for (let i = 0; i < N; i++) {
+      const near = Math.random() < 0.65
       rain.push({
-        x: (Math.random() - 0.5) * 36,
+        x: (Math.random() - 0.5) * (near ? 16 : 40),
         y: Math.random() * 16,
-        z: (Math.random() - 0.5) * 36,
-        v: 9 + Math.random() * 5,
+        z: (Math.random() - 0.5) * (near ? 16 : 40) - (near ? 2 : 8),
+        v: near ? 16 + Math.random() * 6 : 12 + Math.random() * 4,
+        len: near ? 0.55 + Math.random() * 0.25 : 0.3 + Math.random() * 0.15,
       })
-      rainPos[i * 3] = rain[i].x
-      rainPos[i * 3 + 1] = rain[i].y
-      rainPos[i * 3 + 2] = rain[i].z
     }
     const rainGeo = new THREE.BufferGeometry()
     rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3))
-    const rainMat = new THREE.PointsMaterial({
-      color: 0xbbccdd,
-      size: 0.05,
+    const rainMat = new THREE.LineBasicMaterial({
+      color: 0xc5d4e4,
       transparent: true,
-      opacity: 0.4,
+      opacity: 0.35,
       depthWrite: false,
     })
-    const rainPoints = new THREE.Points(rainGeo, rainMat)
-    scene.add(rainPoints)
+    const rainLines = new THREE.LineSegments(rainGeo, rainMat)
+    scene.add(rainLines)
 
     const bolts: THREE.Group[] = []
 
@@ -278,17 +276,27 @@ export default function OceanStorm() {
       flash.intensity *= 0.8
       oceanMat.uniforms.uFlash.value *= 0.84
 
+      const wind = 2.4
+      rainMat.opacity = 0.32 + oceanMat.uniforms.uFlash.value * 0.45
       for (let i = 0; i < N; i++) {
-        rain[i].y -= rain[i].v * 0.016
-        rain[i].x += 0.5 * 0.016
-        if (rain[i].y < 0) {
-          rain[i].y = 14 + Math.random() * 4
-          rain[i].x = (Math.random() - 0.5) * 36
-          rain[i].z = (Math.random() - 0.5) * 36
+        const d = rain[i]
+        d.y -= d.v * 0.016
+        d.x += wind * 0.016
+        if (d.y < 0) {
+          d.y = 14 + Math.random() * 4
+          const near = Math.random() < 0.65
+          d.x = (Math.random() - 0.5) * (near ? 16 : 40)
+          d.z = (Math.random() - 0.5) * (near ? 16 : 40) - (near ? 2 : 8)
+          d.len = near ? 0.55 : 0.3
         }
-        rainPos[i * 3] = rain[i].x
-        rainPos[i * 3 + 1] = rain[i].y
-        rainPos[i * 3 + 2] = rain[i].z
+        // streak: head and a tail offset by wind and fall
+        const o = i * 6
+        rainPos[o] = d.x
+        rainPos[o + 1] = d.y
+        rainPos[o + 2] = d.z
+        rainPos[o + 3] = d.x - wind * d.len * 0.08
+        rainPos[o + 4] = d.y + d.len
+        rainPos[o + 5] = d.z
       }
       rainGeo.attributes.position.needsUpdate = true
 
