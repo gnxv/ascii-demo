@@ -24,6 +24,7 @@ type FishData = {
 
 export default function ThreeFishSchool() {
   const mountRef = useRef<HTMLDivElement>(null)
+  const visible = useRef(true)
 
   useEffect(() => {
     const container = mountRef.current
@@ -254,8 +255,14 @@ export default function ThreeFishSchool() {
     const damping = 0.992
     const maxTurn = 0.045 // radians per frame approx via velocity blend
 
+    const io = new IntersectionObserver(
+      ([e]) => { visible.current = e.isIntersecting },
+      { threshold: 0.02 }
+    )
+    io.observe(container)
     const animate = () => {
       animId = requestAnimationFrame(animate)
+      if (!visible.current) return
       time += 0.016
       neonMat.uniforms.uTime.value = time
 
@@ -482,6 +489,7 @@ export default function ThreeFishSchool() {
     window.addEventListener('resize', onResize)
 
     return () => {
+      io.disconnect()
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', onResize)
       container.removeEventListener('pointermove', onMove)
