@@ -139,22 +139,50 @@ export default function Nebula() {
 
     function makeStars(n: number, spread: number, size: number, color: number, opacity: number) {
       const pos = new Float32Array(n * 3)
+      const phase = new Float32Array(n)
       for (let i = 0; i < n; i++) {
         pos[i * 3] = (Math.random() - 0.5) * spread
         pos[i * 3 + 1] = (Math.random() - 0.5) * spread * 0.7
         pos[i * 3 + 2] = (Math.random() - 0.5) * spread
+        phase[i] = Math.random() * Math.PI * 2
       }
       const geo = new THREE.BufferGeometry()
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-      const mat = new THREE.PointsMaterial({
-        color,
-        size,
-        map: dotTex,
+      geo.setAttribute('phase', new THREE.BufferAttribute(phase, 1))
+      const mat = new THREE.ShaderMaterial({
         transparent: true,
-        opacity,
         depthWrite: false,
-        sizeAttenuation: true,
         blending: THREE.AdditiveBlending,
+        uniforms: {
+          uTime: { value: 0 },
+          uSize: { value: size * 40 },
+          uColor: { value: new THREE.Color(color) },
+          uOpacity: { value: opacity },
+          uMap: { value: dotTex },
+        },
+        vertexShader: /* glsl */ `
+          attribute float phase;
+          uniform float uTime;
+          uniform float uSize;
+          varying float vTwinkle;
+          void main() {
+            vTwinkle = 0.65 + 0.35 * sin(uTime * 1.4 + phase);
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = uSize * vTwinkle * (1.0 / -mv.z);
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: /* glsl */ `
+          uniform vec3 uColor;
+          uniform float uOpacity;
+          uniform sampler2D uMap;
+          varying float vTwinkle;
+          void main() {
+            float a = texture2D(uMap, gl_PointCoord).a;
+            if (a < 0.05) discard;
+            gl_FragColor = vec4(uColor, a * uOpacity * vTwinkle);
+          }
+        `,
       })
       scene.add(new THREE.Points(geo, mat))
       return { geo, mat }
@@ -175,6 +203,9 @@ export default function Nebula() {
       if (!visible.current) return
       time += 0.016
       mat.uniforms.uTime.value = time
+      faint.mat.uniforms.uTime.value = time
+      mid.mat.uniforms.uTime.value = time
+      bright.mat.uniforms.uTime.value = time
       camera.lookAt(0, 0, 0)
       renderer.render(scene, camera)
     }
