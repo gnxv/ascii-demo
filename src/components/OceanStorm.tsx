@@ -44,10 +44,11 @@ export default function OceanStorm() {
     const oceanGeo = new THREE.PlaneGeometry(90, 90, 200, 200)
     const oceanMat = new THREE.ShaderMaterial({
       side: THREE.DoubleSide,
-      uniforms: { uTime: { value: 0 }, uFlash: { value: 0 }, uWind: { value: 0 } },
+      uniforms: { uTime: { value: 0 }, uFlash: { value: 0 }, uWind: { value: 0 }, uGust: { value: 1 } },
       vertexShader: /* glsl */ `
         uniform float uTime;
         uniform float uWind;
+        uniform float uGust;
         varying vec3 vWorld;
         varying vec3 vNormal;
         varying float vHeight;
@@ -101,6 +102,7 @@ export default function OceanStorm() {
           // disp.y is up. Plane local Z is 0; after rotation local Y is horizontal,
           // so put vertical into local Z (which becomes world Y after -PI/2).
           vec3 p = position;
+          disp *= uGust;
           p.x += disp.x;
           p.y += disp.z;
           p.z += disp.y;
@@ -148,30 +150,45 @@ export default function OceanStorm() {
           float sss = pow(max(vHeight, 0.0), 1.4) * 0.35;
           col += vec3(0.05, 0.18, 0.2) * sss;
 
-          // Foam only where the surface compresses (wave about to fold / break).
-          // Jacobian < 1 means vertices are bunching — that is the breaking face,
-          // not the top of the crest.
-          float foam = smoothstep(0.9, 0.45, vJacobian);
-          // Prefer the steep front of the wave, not the flat peak
-          float steep = 1.0 - abs(N.y);
-          foam *= smoothstep(0.05, 0.35, steep);
+          // Depth colour: nearer lighter, farther darker (reads as depth)
+          float dist = length(vWorld.xz);
+          float depth = smoothstep(4.0, 36.0, dist);
+          col = mix(col, vec3(0.02, 0.04, 0.08), depth * 0.55);
 
-          vec3 L = normalize(vec3(-0.3, 0.65, 0.2));
+          // Foam where the wave compresses, smeared downwind so it trails the crest
+          float foam = smoothstep(0.9, 0.4, vJacobian);
+          float steep = 1.0 - abs(N.y);
+          foam *= smoothstep(0.04, 0.3, steep);
+          // trail: sample a point slightly upwind in time via xz offset
+          vec2 trail = vXZ - vec2(cos(uTime * 0.15), sin(uTime * 0.15)) * 0.6;
+          float trailN = sin(trail.x * 1.7 - uTime * 0.8) * sin(trail.y * 1.3 + uTime * 0.5);
+          foam *= 0.65 + 0.35 * trailN;
+          foam = clamp(foam, 0.0, 1.0);
+
+          // Moon path: elongated specular along the light direction
+          vec3 L = normalize(vec3(-0.25, 0.55, 0.15));
           vec3 R = reflect(-L, N);
           float ndv = max(dot(N, V), 0.0);
-          // Two lobes: a soft sheen and a tighter glint, both stronger at grazing angles
-          float sheen = pow(max(dot(R, V), 0.0), 12.0);
-          float glint = pow(max(dot(R, V), 0.0), 90.0);
-          float spec = (sheen * 0.25 + glint * 0.7) * mix(0.4, 1.0, 1.0 - ndv);
-          col += vec3(0.75, 0.82, 0.95) * spec;
+          float sheen = pow(max(dot(R, V), 0.0), 8.0);
+          float glint = pow(max(dot(R, V), 0.0), 70.0);
+          // stretch the highlight into a path by weakening the across-light axis
+          vec3 Lflat = normalize(vec3(L.x, 0.0, L.z));
+          float along = abs(dot(normalize(vWorld), Lflat));
+          float path = sheen * 0.35 + glint * mix(0.2, 1.0, along);
+          col += vec3(0.8, 0.86, 1.0) * path * mix(0.5, 1.0, 1.0 - ndv);
+
+          // Caustics in the troughs (light focusing where the surface is concave)
+          float caus = sin(vXZ.x * 1.6 + uTime * 0.7) * sin(vXZ.y * 1.4 - uTime * 0.55);
+          caus = pow(abs(caus), 3.0);
+          float trough = smoothstep(0.2, -0.3, vHeight);
+          col += vec3(0.15, 0.28, 0.32) * caus * trough * 0.45;
 
           col += vec3(0.45, 0.55, 0.7) * uFlash * 0.65;
 
-          float dist = length(vWorld.xz);
-          col *= mix(1.0, 0.4, smoothstep(10.0, 40.0, dist));
+          // Aerial fog toward the horizon
+          col = mix(col, vec3(0.12, 0.16, 0.22), smoothstep(12.0, 42.0, dist));
 
-          // Foam after the fade so it stays visible
-          col = mix(col, vec3(0.82, 0.86, 0.9), foam * 0.75);
+          col = mix(col, vec3(0.84, 0.88, 0.92), foam * 0.7);
 
           gl_FragColor = vec4(col, 1.0);
         }
@@ -207,6 +224,34 @@ export default function OceanStorm() {
     })
     const rainPoints = new THREE.Points(rainGeo, rainMat)
     scene.add(rainPoints)
+
+    // Spray torn off breaking crests
+    const SN = 250
+    const sprayPos = new Float32Array(SN * 3)
+    const spray: { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number }[] = []
+    for (let i = 0; i < SN; i++) {
+      spray.push({
+        x: (Math.random() - 0.5) * 20,
+        y: 0.6 + Math.random() * 0.8,
+        z: (Math.random() - 0.5) * 20,
+        vx: (Math.random() - 0.5) * 1.5,
+        vy: 1.2 + Math.random() * 1.5,
+        vz: (Math.random() - 0.5) * 1.5,
+        life: Math.random(),
+      })
+    }
+    const sprayGeo = new THREE.BufferGeometry()
+    sprayGeo.setAttribute('position', new THREE.BufferAttribute(sprayPos, 3))
+    const sprayMat = new THREE.PointsMaterial({
+      color: 0xdde6ee,
+      size: 0.08,
+      transparent: true,
+      opacity: 0.55,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+    })
+    const sprayPoints = new THREE.Points(sprayGeo, sprayMat)
+    scene.add(sprayPoints)
 
     const bolts: THREE.Line[] = []
     function spawnBolt() {
@@ -250,6 +295,7 @@ export default function OceanStorm() {
 
       oceanMat.uniforms.uTime.value = time
       oceanMat.uniforms.uWind.value = time * 0.03
+      oceanMat.uniforms.uGust.value = 0.85 + 0.2 * sin(time * 0.17) * sin(time * 0.07)
 
       if (time > nextFlash) {
         spawnBolt()
@@ -275,6 +321,28 @@ export default function OceanStorm() {
       }
       rainGeo.attributes.position.needsUpdate = true
 
+      for (let i = 0; i < SN; i++) {
+        const s = spray[i]
+        s.life -= 0.008
+        s.vy -= 2.4 * 0.016
+        s.x += s.vx * 0.016
+        s.y += s.vy * 0.016
+        s.z += s.vz * 0.016
+        if (s.life <= 0 || s.y < 0.1) {
+          s.x = (Math.random() - 0.5) * 18
+          s.y = 0.5 + Math.random() * 0.5
+          s.z = (Math.random() - 0.5) * 18
+          s.vx = 0.4 + Math.random() * 1.2
+          s.vy = 1.4 + Math.random() * 1.6
+          s.vz = (Math.random() - 0.5) * 1.2
+          s.life = 0.6 + Math.random() * 0.4
+        }
+        sprayPos[i * 3] = s.x
+        sprayPos[i * 3 + 1] = s.y
+        sprayPos[i * 3 + 2] = s.z
+      }
+      sprayGeo.attributes.position.needsUpdate = true
+
       camera.position.x = Math.sin(time * 0.04) * 1.4
       camera.lookAt(0, 0.8, -18)
       renderer.render(scene, camera)
@@ -296,6 +364,8 @@ export default function OceanStorm() {
       oceanMat.dispose()
       rainGeo.dispose()
       rainMat.dispose()
+      sprayGeo.dispose()
+      sprayMat.dispose()
       bolts.forEach((b) => {
         b.geometry.dispose()
         ;(b.material as THREE.Material).dispose()
