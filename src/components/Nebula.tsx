@@ -124,6 +124,17 @@ export default function Nebula() {
     scene.add(nebula)
 
     // Star field: many faint, a few bright
+    const dot = document.createElement('canvas')
+    dot.width = dot.height = 32
+    const dctx = dot.getContext('2d')!
+    const g = dctx.createRadialGradient(16, 16, 0, 16, 16, 16)
+    g.addColorStop(0, 'rgba(255,255,255,1)')
+    g.addColorStop(0.4, 'rgba(255,255,255,0.8)')
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    dctx.fillStyle = g
+    dctx.fillRect(0, 0, 32, 32)
+    const dotTex = new THREE.CanvasTexture(dot)
+
     function makeStars(n: number, spread: number, size: number, color: number, opacity: number) {
       const pos = new Float32Array(n * 3)
       for (let i = 0; i < n; i++) {
@@ -136,10 +147,12 @@ export default function Nebula() {
       const mat = new THREE.PointsMaterial({
         color,
         size,
+        map: dotTex,
         transparent: true,
         opacity,
         depthWrite: false,
         sizeAttenuation: true,
+        blending: THREE.AdditiveBlending,
       })
       scene.add(new THREE.Points(geo, mat))
       return { geo, mat }
@@ -160,8 +173,6 @@ export default function Nebula() {
       if (!visible.current) return
       time += 0.016
       mat.uniforms.uTime.value = time
-      camera.position.x = Math.sin(time * 0.05) * 0.6
-      camera.position.y = Math.cos(time * 0.04) * 0.3
       camera.lookAt(0, 0, 0)
       renderer.render(scene, camera)
     }
