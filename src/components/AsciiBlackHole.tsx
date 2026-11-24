@@ -105,8 +105,8 @@ export default function AsciiBlackHole() {
           // Doppler beaming
           vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
           float beta = 0.5 / sqrt(safeR);
-          float doppler = 1.0 + 2.0 * beta * dot(tangent, -rayDir);
-          doppler = clamp(doppler, 0.25, 2.4);
+          float doppler = 1.0 + 0.85 * beta * dot(tangent, -rayDir);
+          doppler = clamp(doppler, 0.65, 1.6);
 
           float intensity = (0.25 + flow * 1.05) * doppler;
           intensity *= smoothstep(1.6, 2.1, r) * smoothstep(outer, outer * 0.82, r);
