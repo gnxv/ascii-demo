@@ -91,8 +91,9 @@ export default function Nebula() {
             vec3 warp = vec3(fbm(sp + 4.1), fbm(sp + 9.7), fbm(sp + 2.3));
             float d = fbm(sp + warp * 1.4);
             d = smoothstep(0.46, 0.7, d);
-            float edge = 1.0 - smoothstep(4.2, 7.2, length(p));
-            d *= edge;
+            float core = 1.0 - smoothstep(0.0, 3.2, length(p - star));
+            float edge = 1.0 - smoothstep(4.5, 7.4, length(p));
+            d = max(d, core * 0.85) * edge;
 
             if (d > 0.015) {
               // Dense core hydrogen red, thin gas oxygen blue
@@ -142,8 +143,8 @@ export default function Nebula() {
     })
     scene.add(new THREE.Points(starGeo, starMat))
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.06, 12, 12),
-      new THREE.MeshBasicMaterial({ color: 0xfff2d0 })
+      new THREE.SphereGeometry(0.018, 8, 8),
+      new THREE.MeshBasicMaterial({ color: 0xffe8c0 })
     )
     core.position.set(0.4, 0.1, 0)
     scene.add(core)
