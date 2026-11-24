@@ -20,7 +20,7 @@ export default function OceanStorm() {
       0.1,
       80
     )
-    camera.position.set(0, 3.2, 14)
+    camera.position.set(0, 2.4, 10)
 
     const renderer = new THREE.WebGLRenderer({
       antialias: true,
@@ -80,9 +80,9 @@ export default function OceanStorm() {
           vec3 binormal = vec3(0.0, 0.0, 1.0);
 
           // 6 waves: long swell -> short chop, directions around wind
-          p += gerstner(position, normalize(vec2(1.0, 0.25)), 0.28, 28.0, uTime, tangent, binormal);
-          p += gerstner(position, normalize(vec2(0.6, 0.8)), 0.22, 16.0, uTime, tangent, binormal);
-          p += gerstner(position, normalize(vec2(-0.3, 1.0)), 0.18, 9.0, uTime, tangent, binormal);
+          p += gerstner(position, normalize(vec2(1.0, 0.25)), 0.18, 28.0, uTime, tangent, binormal);
+          p += gerstner(position, normalize(vec2(0.6, 0.8)), 0.15, 16.0, uTime, tangent, binormal);
+          p += gerstner(position, normalize(vec2(-0.3, 1.0)), 0.12, 9.0, uTime, tangent, binormal);
           p += gerstner(position, normalize(vec2(0.9, -0.4)), 0.14, 5.5, uTime, tangent, binormal);
           p += gerstner(position, normalize(vec2(-0.7, 0.5)), 0.1, 3.2, uTime, tangent, binormal);
           p += gerstner(position, normalize(vec2(0.2, -1.0)), 0.07, 1.8, uTime, tangent, binormal);
@@ -105,17 +105,13 @@ export default function OceanStorm() {
           vec3 V = normalize(cameraPosition - vWorld);
           float fres = pow(1.0 - max(dot(N, V), 0.0), 3.0);
 
-          vec3 deep = vec3(0.015, 0.04, 0.09);
-          vec3 mid = vec3(0.04, 0.1, 0.16);
-          vec3 sky = vec3(0.25, 0.3, 0.38);
+          // One water colour. Height only adds a little foam, not a two-tone flag.
+          vec3 water = vec3(0.03, 0.07, 0.12);
+          vec3 sky = vec3(0.35, 0.4, 0.48);
+          vec3 col = mix(water, sky, fres * 0.6);
 
-          float h = smoothstep(-0.6, 0.8, vCrest);
-          vec3 col = mix(deep, mid, h);
-          col = mix(col, sky, fres * 0.55);
-
-          // foam on sharp crests
-          float foam = smoothstep(0.45, 0.85, vCrest) * smoothstep(0.2, 0.7, 1.0 - N.y);
-          col = mix(col, vec3(0.7, 0.75, 0.8), foam * 0.7);
+          float foam = smoothstep(0.55, 0.95, vCrest);
+          col = mix(col, vec3(0.75, 0.8, 0.85), foam * 0.55);
 
           // specular from moon-ish light
           vec3 L = normalize(vec3(-0.4, 0.7, 0.3));
@@ -233,7 +229,7 @@ export default function OceanStorm() {
       rainGeo.attributes.position.needsUpdate = true
 
       camera.position.x = Math.sin(time * 0.05) * 1.2
-      camera.lookAt(0, 0.5, 0)
+      camera.lookAt(0, 1.2, -20)
       renderer.render(scene, camera)
     }
     animate()
