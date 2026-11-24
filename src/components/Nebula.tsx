@@ -85,10 +85,12 @@ export default function Nebula() {
 
           for (int i = 0; i < 18; i++) {
             vec3 p = ro + rd * t;
-            // Slow flow — the gas breathes and drifts
-            vec3 sp = p * 0.35
-              + vec3(uTime * 0.02, uTime * 0.008, -uTime * 0.015)
-              + vec3(sin(uTime * 0.05 + p.y), 0.0, cos(uTime * 0.04));
+            // Spiral vortices, same idea as the black hole disk
+            float r = length(p.xz);
+            float ang = atan(p.z, p.x) + uTime * 0.04 + r * 0.55;
+            vec3 twisted = vec3(cos(ang) * r, p.y, sin(ang) * r);
+            vec3 sp = twisted * 0.35
+              + vec3(uTime * 0.015, uTime * 0.006, -uTime * 0.01);
             float d = fbm(sp);
             d = smoothstep(0.4, 0.72, d);
             // Fade at the edges of the volume
@@ -121,24 +123,30 @@ export default function Nebula() {
     const nebula = new THREE.Mesh(geo, mat)
     scene.add(nebula)
 
-    // A few bright stars embedded in the gas
-    const starN = 80
-    const starPos = new Float32Array(starN * 3)
-    for (let i = 0; i < starN; i++) {
-      starPos[i * 3] = (Math.random() - 0.5) * 10
-      starPos[i * 3 + 1] = (Math.random() - 0.5) * 7
-      starPos[i * 3 + 2] = (Math.random() - 0.5) * 8
+    // Star field: many faint, a few bright
+    function makeStars(n: number, spread: number, size: number, color: number, opacity: number) {
+      const pos = new Float32Array(n * 3)
+      for (let i = 0; i < n; i++) {
+        pos[i * 3] = (Math.random() - 0.5) * spread
+        pos[i * 3 + 1] = (Math.random() - 0.5) * spread * 0.7
+        pos[i * 3 + 2] = (Math.random() - 0.5) * spread
+      }
+      const geo = new THREE.BufferGeometry()
+      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+      const mat = new THREE.PointsMaterial({
+        color,
+        size,
+        transparent: true,
+        opacity,
+        depthWrite: false,
+        sizeAttenuation: true,
+      })
+      scene.add(new THREE.Points(geo, mat))
+      return { geo, mat }
     }
-    const starGeo = new THREE.BufferGeometry()
-    starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3))
-    const starMat = new THREE.PointsMaterial({
-      color: 0xfff4e0,
-      size: 0.04,
-      transparent: true,
-      opacity: 0.85,
-      depthWrite: false,
-    })
-    scene.add(new THREE.Points(starGeo, starMat))
+    const faint = makeStars(400, 22, 0.03, 0xfff6ea, 0.7)
+    const mid = makeStars(60, 14, 0.06, 0xffe8c8, 0.9)
+    const bright = makeStars(12, 10, 0.11, 0xffffff, 1)
 
     let time = 0
     let animId: number
@@ -173,8 +181,9 @@ export default function Nebula() {
       renderer.dispose()
       geo.dispose()
       mat.dispose()
-      starGeo.dispose()
-      starMat.dispose()
+      faint.geo.dispose(); faint.mat.dispose()
+      mid.geo.dispose(); mid.mat.dispose()
+      bright.geo.dispose(); bright.mat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
