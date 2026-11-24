@@ -190,8 +190,8 @@ export default function OceanStorm() {
     ocean.rotation.x = -Math.PI / 2
     scene.add(ocean)
 
-    // Volumetric storm clouds. Almost invisible until a strike lights them.
-    const cloudGeo = new THREE.BoxGeometry(80, 14, 80)
+    // Volumetric storm clouds. Dark until a strike lights them.
+    const cloudGeo = new THREE.BoxGeometry(90, 18, 90)
     const cloudMat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
@@ -203,9 +203,7 @@ export default function OceanStorm() {
       },
       vertexShader: /* glsl */ `
         varying vec3 vWorld;
-        varying vec3 vLocal;
         void main() {
-          vLocal = position;
           vec4 w = modelMatrix * vec4(position, 1.0);
           vWorld = w.xyz;
           gl_Position = projectionMatrix * viewMatrix * w;
@@ -216,7 +214,6 @@ export default function OceanStorm() {
         uniform float uFlash;
         uniform vec3 uFlashPos;
         varying vec3 vWorld;
-        varying vec3 vLocal;
 
         float hash(vec3 p) {
           p = fract(p * 0.1031);
@@ -227,80 +224,80 @@ export default function OceanStorm() {
           vec3 i = floor(p);
           vec3 f = fract(p);
           f = f * f * (3.0 - 2.0 * f);
-          return mix(
-            mix(mix(hash(i), hash(i + vec3(1, 0, 0)), f.x),
-                mix(hash(i + vec3(0, 1, 0)), hash(i + vec3(1, 1, 0)), f.x), f.y),
-            mix(mix(hash(i + vec3(0, 0, 1)), hash(i + vec3(1, 0, 1)), f.x),
-                mix(hash(i + vec3(0, 1, 1)), hash(i + vec3(1, 1, 1)), f.x), f.y),
-            f.z);
+          float n = mix(mix(mix(hash(i), hash(i+vec3(1,0,0)), f.x),
+                            mix(hash(i+vec3(0,1,0)), hash(i+vec3(1,1,0)), f.x), f.y),
+                        mix(mix(hash(i+vec3(0,0,1)), hash(i+vec3(1,0,1)), f.x),
+                            mix(hash(i+vec3(0,1,1)), hash(i+vec3(1,1,1)), f.x), f.y), f.z);
+          return n;
         }
         float fbm(vec3 p) {
-          float v = 0.0;
-          float a = 0.5;
-          for (int i = 0; i < 4; i++) {
+          float v = 0.0, a = 0.5;
+          for (int i = 0; i < 5; i++) {
             v += a * noise(p);
-            p = p * 2.1 + 11.7;
+            p = p * 2.03 + 17.1;
             a *= 0.5;
           }
           return v;
         }
 
+        // Density with a height profile: firm base, wispy top
+        float densityAt(vec3 p) {
+          float h = clamp((p.y - 9.0) / 12.0, 0.0, 1.0);
+          float profile = smoothstep(0.0, 0.15, h) * smoothstep(1.0, 0.45, h);
+          vec3 sp = p * 0.055 + vec3(uTime * 0.01, 0.0, uTime * 0.006);
+          float d = fbm(sp);
+          d = smoothstep(0.42, 0.68, d);
+          return d * profile;
+        }
+
         void main() {
           vec3 ro = cameraPosition;
           vec3 rd = normalize(vWorld - ro);
-          // March through the cloud slab
-          float density = 0.0;
-          float lit = 0.0;
-          vec3 p = ro;
-          for (int i = 0; i < 24; i++) {
-            p += rd * 1.6;
-            if (p.y < 8.0 || p.y > 22.0) continue;
-            vec3 sp = p * 0.07 + vec3(uTime * 0.012, 0.0, uTime * 0.008);
-            float d = fbm(sp);
-            d = smoothstep(0.48, 0.72, d);
-            density += d * 0.08;
-            float dist = length(p - uFlashPos);
-            lit += d * exp(-dist * 0.12);
+
+          // Enter the cloud slab (y 9..21) before stepping
+          float t0 = 0.0;
+          if (ro.y > 21.0) t0 = (ro.y - 21.0) / -rd.y;
+          else if (ro.y < 9.0) t0 = (9.0 - ro.y) / rd.y;
+          if (t0 < 0.0) discard;
+          // Jitter so steps do not band
+          float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+          float t = t0 + jitter * 0.7;
+
+          vec3 light = vec3(0.0);
+          float trans = 1.0;
+          vec3 L = normalize(uFlashPos - ro);
+
+          for (int i = 0; i < 40; i++) {
+            vec3 p = ro + rd * t;
+            if (p.y < 9.0 || p.y > 21.0 || t > 70.0) break;
+            float d = densityAt(p);
+            if (d > 0.01) {
+              // Short march toward the strike for self-shadow / rim
+              float shadow = 0.0;
+              for (int j = 1; j <= 4; j++) {
+                shadow += densityAt(p + L * float(j) * 1.4);
+              }
+              float energy = exp(-shadow * 1.6);
+              // Beer-Lambert: absorb as we go
+              float absorb = exp(-d * 0.9);
+              vec3 scatter = vec3(0.62, 0.7, 0.85) * energy * uFlash;
+              light += trans * scatter * d * 0.8;
+              trans *= absorb;
+              if (trans < 0.05) break;
+            }
+            t += 0.7;
           }
-          density = clamp(density, 0.0, 1.0);
-          // Dark mass, revealed by the strike
-          vec3 col = vec3(0.02, 0.03, 0.05) * density;
-          col += vec3(0.55, 0.65, 0.8) * lit * uFlash * 0.55;
-          float alpha = density * (0.15 + uFlash * 0.75);
+
+          // Barely there without a strike, lit volume when it hits
+          float alpha = (1.0 - trans) * (0.08 + uFlash * 0.85);
           if (alpha < 0.01) discard;
-          gl_FragColor = vec4(col, alpha);
+          gl_FragColor = vec4(light + vec3(0.015) * (1.0 - trans), alpha);
         }
       `,
     })
     const clouds = new THREE.Mesh(cloudGeo, cloudMat)
     clouds.position.y = 15
     scene.add(clouds)
-
-
-    // Rain as streaks (each drop is a short line), denser near the camera
-    const N = 2200
-    const rainPos = new Float32Array(N * 2 * 3)
-    const rain: { x: number; y: number; z: number; v: number; len: number }[] = []
-    for (let i = 0; i < N; i++) {
-      const near = Math.random() < 0.65
-      rain.push({
-        x: (Math.random() - 0.5) * (near ? 16 : 40),
-        y: Math.random() * 16,
-        z: (Math.random() - 0.5) * (near ? 16 : 40) - (near ? 2 : 8),
-        v: near ? 14 + Math.random() * 5 : 11 + Math.random() * 4,
-        len: near ? 0.28 + Math.random() * 0.12 : 0.16 + Math.random() * 0.08,
-      })
-    }
-    const rainGeo = new THREE.BufferGeometry()
-    rainGeo.setAttribute('position', new THREE.BufferAttribute(rainPos, 3))
-    const rainMat = new THREE.LineBasicMaterial({
-      color: 0x9aabbc,
-      transparent: true,
-      opacity: 0.12,
-      depthWrite: false,
-    })
-    const rainLines = new THREE.LineSegments(rainGeo, rainMat)
-    scene.add(rainLines)
 
     const bolts: THREE.Group[] = []
 
