@@ -137,6 +137,7 @@ export default function AsciiBlackHole() {
 
           vec3 col = vec3(0.0);
           float alpha = 0.0;
+          float minR = 99.0;
 
           // Simple ray march with gravitational deflection
           vec3 pos = ro;
@@ -145,6 +146,7 @@ export default function AsciiBlackHole() {
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
+            minR = min(minR, r);
             if (r < 1.05) break; // captured
 
             // Deflection toward center (approx Schwarzschild)
@@ -169,14 +171,13 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          // Soft shadow of the hole
-          float shadow = smoothstep(0.55, 1.35, length(uv));
-          col *= shadow;
+          // Photon ring from closest approach, not from screen position
+          float ring = exp(-pow((minR - 1.55) * 7.0, 2.0));
+          col += vec3(1.0, 0.92, 0.75) * ring * 0.7;
 
-          // Photon ring: light piled up just outside the shadow
-          float pr = length(uv);
-          float ring = exp(-pow((pr - 1.05) * 10.0, 2.0));
-          col += vec3(1.0, 0.9, 0.7) * ring * 0.55;
+          // Soft shadow: rays that fell in or skimmed the hole fade out
+          float shadow = smoothstep(1.02, 1.7, minR);
+          col *= shadow;
 
           gl_FragColor = vec4(col, 1.0);
         }
