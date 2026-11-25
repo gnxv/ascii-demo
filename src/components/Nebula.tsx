@@ -126,61 +126,6 @@ export default function Nebula() {
     const nebula = new THREE.Mesh(geo, mat)
     scene.add(nebula)
 
-    // Rare comet: one at a time, long quiet gaps
-    const tailN = 18
-    const tailPos = new Float32Array(tailN * 3)
-    const tailCol = new Float32Array(tailN * 3)
-    const tailGeo = new THREE.BufferGeometry()
-    tailGeo.setAttribute('position', new THREE.BufferAttribute(tailPos, 3))
-    tailGeo.setAttribute('color', new THREE.BufferAttribute(tailCol, 3))
-    const tailMat = new THREE.LineBasicMaterial({
-      vertexColors: true,
-      transparent: true,
-      opacity: 0.85,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
-    const tail = new THREE.Line(tailGeo, tailMat)
-    tail.visible = false
-    scene.add(tail)
-    const headGeo = new THREE.BufferGeometry()
-    headGeo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(3), 3))
-    const headMat = new THREE.PointsMaterial({
-      color: 0xfff6e8,
-      size: 4.5,
-      map: undefined as unknown as THREE.Texture,
-      transparent: true,
-      depthWrite: false,
-      blending: THREE.AdditiveBlending,
-    })
-    const head = new THREE.Points(headGeo, headMat)
-    head.visible = false
-    scene.add(head)
-
-    type Comet = { x: number; y: number; z: number; vx: number; vy: number; vz: number; life: number; trail: THREE.Vector3[] }
-    let comet: Comet | null = null
-    let nextComet = 6 + Math.random() * 8
-
-    function spawnComet() {
-      const side = Math.random() < 0.5 ? -1 : 1
-      const y = (Math.random() - 0.5) * 6
-      const z = -2 - Math.random() * 4
-      const speed = 4 + Math.random() * 2
-      comet = {
-        x: side * 9,
-        y,
-        z,
-        vx: -side * speed,
-        vy: (Math.random() - 0.5) * 0.6,
-        vz: (Math.random() - 0.5) * 0.3,
-        life: 0,
-        trail: [],
-      }
-      tail.visible = true
-      head.visible = true
-    }
-
-
     // Star field: many faint, a few bright
     const dot = document.createElement('canvas')
     dot.width = dot.height = 32
@@ -245,7 +190,6 @@ export default function Nebula() {
       scene.add(new THREE.Points(geo, mat))
       return { geo, mat }
     }
-    headMat.map = dotTex
     const faint = makeStars(400, 22, 2.2, 0xfff6ea, 0.7)
     const mid = makeStars(60, 14, 3.4, 0xffe8c8, 0.9)
     const bright = makeStars(12, 10, 5.0, 0xffffff, 1)
@@ -262,36 +206,6 @@ export default function Nebula() {
       if (!visible.current) return
       time += 0.016
       mat.uniforms.uTime.value = time
-      if (!comet && time > nextComet) spawnComet()
-      if (comet) {
-        comet.life += 0.016
-        comet.x += comet.vx * 0.016
-        comet.y += comet.vy * 0.016
-        comet.z += comet.vz * 0.016
-        comet.trail.unshift(new THREE.Vector3(comet.x, comet.y, comet.z))
-        if (comet.trail.length > tailN) comet.trail.pop()
-        for (let i = 0; i < tailN; i++) {
-          const p = comet.trail[Math.min(i, comet.trail.length - 1)]
-          tailPos[i * 3] = p.x
-          tailPos[i * 3 + 1] = p.y
-          tailPos[i * 3 + 2] = p.z
-          const fade = 1 - i / tailN
-          tailCol[i * 3] = 1.0 * fade
-          tailCol[i * 3 + 1] = 0.9 * fade
-          tailCol[i * 3 + 2] = 0.7 * fade
-        }
-        tailGeo.attributes.position.needsUpdate = true
-        tailGeo.attributes.color.needsUpdate = true
-        const hp = headGeo.attributes.position.array as Float32Array
-        hp[0] = comet.x; hp[1] = comet.y; hp[2] = comet.z
-        headGeo.attributes.position.needsUpdate = true
-        if (Math.abs(comet.x) > 11 || comet.life > 5) {
-          comet = null
-          tail.visible = false
-          head.visible = false
-          nextComet = time + 15 + Math.random() * 17
-        }
-      }
       faint.mat.uniforms.uTime.value = time
       mid.mat.uniforms.uTime.value = time
       bright.mat.uniforms.uTime.value = time
@@ -316,8 +230,6 @@ export default function Nebula() {
       faint.geo.dispose(); faint.mat.dispose()
       mid.geo.dispose(); mid.mat.dispose()
       bright.geo.dispose(); bright.mat.dispose()
-      tailGeo.dispose(); tailMat.dispose()
-      headGeo.dispose(); headMat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
