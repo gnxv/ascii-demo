@@ -85,8 +85,9 @@ export default function Nebula() {
           float trans = 1.0;
           float t = jitter * 0.18;
 
-          for (int i = 0; i < 18; i++) {
+          for (int i = 0; i < 16; i++) {
             vec3 p = ro + rd * t;
+            if (length(p) > 8.5) { t += 0.45; continue; }
             // Gentle spiral drift
             float r = length(p.xz);
             float ang = atan(p.z, p.x) + uTime * 0.03 + r * 0.4;
@@ -113,7 +114,7 @@ export default function Nebula() {
               trans *= absorb;
               if (trans < 0.04) break;
             }
-            t += 0.4;
+            t += 0.45;
             if (t > 16.0) break;
           }
 
