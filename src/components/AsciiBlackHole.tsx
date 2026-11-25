@@ -122,6 +122,8 @@ export default function AsciiBlackHole() {
 
           float intensity = (0.25 + flow * 1.05) * doppler;
           intensity *= smoothstep(1.6, 2.1, r) * smoothstep(outer, outer * 0.82, r);
+          // Hottest at the inner edge
+          intensity *= 1.0 + 1.4 * smoothstep(3.2, 1.7, r);
 
           return col * intensity;
         }
@@ -166,6 +168,15 @@ export default function AsciiBlackHole() {
             pos = next;
             if (r > 30.0) break;
           }
+
+          // Soft shadow of the hole
+          float shadow = smoothstep(0.55, 1.35, length(uv));
+          col *= shadow;
+
+          // Photon ring: light piled up just outside the shadow
+          float pr = length(uv);
+          float ring = exp(-pow((pr - 1.05) * 10.0, 2.0));
+          col += vec3(1.0, 0.9, 0.7) * ring * 0.55;
 
           gl_FragColor = vec4(col, 1.0);
         }
