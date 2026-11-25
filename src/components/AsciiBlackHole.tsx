@@ -14,15 +14,7 @@ export default function AsciiBlackHole() {
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x000000)
 
-    const camera = new THREE.PerspectiveCamera(
-      45,
-      container.clientWidth / container.clientHeight,
-      0.1,
-      300
-    )
-    camera.position.set(0, 1.4, -16)
-    camera.lookAt(0, 0, 0)
-
+    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
     const renderer = new THREE.WebGLRenderer({
       antialias: false,
       powerPreference: 'high-performance',
@@ -31,100 +23,10 @@ export default function AsciiBlackHole() {
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
-    // Star field far behind (like nebula)
-    const dot = document.createElement('canvas')
-    dot.width = dot.height = 32
-    const dctx = dot.getContext('2d')!
-    const g = dctx.createRadialGradient(16, 16, 0, 16, 16, 16)
-    g.addColorStop(0, 'rgba(255,255,255,1)')
-    g.addColorStop(0.35, 'rgba(255,255,255,0.85)')
-    g.addColorStop(1, 'rgba(255,255,255,0)')
-    dctx.fillStyle = g
-    dctx.fillRect(0, 0, 32, 32)
-    const dotTex = new THREE.CanvasTexture(dot)
-
-    const warm = new THREE.Color(0xffc9a0)
-    const cool = new THREE.Color(0xb9d4ff)
-    const white = new THREE.Color(0xfff6ea)
-
-    function makeStars(n: number, spread: number, size: number, opacity: number) {
-      const pos = new Float32Array(n * 3)
-      const phase = new Float32Array(n)
-      const freq = new Float32Array(n)
-      const col = new Float32Array(n * 3)
-      for (let i = 0; i < n; i++) {
-        pos[i * 3] = (Math.random() - 0.5) * spread
-        pos[i * 3 + 1] = (Math.random() - 0.5) * spread * 0.55
-        pos[i * 3 + 2] = (Math.random() - 0.5) * spread * 0.8 - 10 // bias farther back
-        phase[i] = Math.random() * Math.PI * 2
-        freq[i] = 0.5 + Math.random() * 2.2
-        const pick = Math.random()
-        const c = pick < 0.22 ? warm : pick < 0.48 ? cool : white
-        col[i * 3] = c.r
-        col[i * 3 + 1] = c.g
-        col[i * 3 + 2] = c.b
-      }
-      const geo = new THREE.BufferGeometry()
-      geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
-      geo.setAttribute('phase', new THREE.BufferAttribute(phase, 1))
-      geo.setAttribute('freq', new THREE.BufferAttribute(freq, 1))
-      geo.setAttribute('starColor', new THREE.BufferAttribute(col, 3))
-      const mat = new THREE.ShaderMaterial({
-        transparent: true,
-        depthWrite: false,
-        blending: THREE.AdditiveBlending,
-        uniforms: {
-          uTime: { value: 0 },
-          uSize: { value: size },
-          uOpacity: { value: opacity },
-          uMap: { value: dotTex },
-        },
-        vertexShader: /* glsl */ `
-          attribute float phase;
-          attribute float freq;
-          attribute vec3 starColor;
-          uniform float uTime;
-          uniform float uSize;
-          varying float vTwinkle;
-          varying vec3 vColor;
-          void main() {
-            vColor = starColor;
-            float a = sin(uTime * freq + phase);
-            float b = sin(uTime * freq * 1.6 + phase * 2.1);
-            vTwinkle = 0.82 + 0.18 * (a * 0.55 + b * 0.45);
-            vec4 mv = modelViewMatrix * vec4(position, 1.0);
-            gl_PointSize = uSize * (300.0 / -mv.z);
-            gl_Position = projectionMatrix * mv;
-          }
-        `,
-        fragmentShader: /* glsl */ `
-          uniform float uOpacity;
-          uniform sampler2D uMap;
-          varying float vTwinkle;
-          varying vec3 vColor;
-          void main() {
-            float a = texture2D(uMap, gl_PointCoord).a;
-            if (a < 0.04) discard;
-            gl_FragColor = vec4(vColor, a * uOpacity * vTwinkle);
-          }
-        `,
-      })
-      const points = new THREE.Points(geo, mat)
-      points.renderOrder = 0
-      scene.add(points)
-      return { geo, mat, points }
-    }
-
-    const faint = makeStars(520, 90, 1.8, 0.65)
-    const mid = makeStars(90, 55, 2.8, 0.85)
-    const bright = makeStars(18, 40, 4.2, 1.0)
-
-    // Black hole full-screen overlay (transparent background)
     const geo = new THREE.PlaneGeometry(2, 2)
     const mat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
-      depthTest: false,
       uniforms: {
         uTime: { value: 0 },
         uResolution: { value: new THREE.Vector2(container.clientWidth, container.clientHeight) },
@@ -219,6 +121,34 @@ export default function AsciiBlackHole() {
           return col * intensity;
         }
 
+        vec3 sampleStars(vec2 suv, float density) {
+          vec3 starCol = vec3(0.0);
+          vec2 base = floor(suv);
+          vec2 fr = fract(suv);
+          for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+              vec2 cell = base + vec2(float(i), float(j));
+              float h = hash(cell);
+              if (h > density) {
+                vec2 jitter = vec2(
+                  hash(cell + vec2(1.3, 2.7)),
+                  hash(cell + vec2(4.1, 0.9))
+                );
+                vec2 local = fr - vec2(float(i), float(j)) - jitter;
+                float d = length(local);
+                float size = mix(90.0, 220.0, hash(cell + 5.0)); // smaller points
+                float s = exp(-d * d * size);
+                float huePick = hash(cell + 9.0);
+                vec3 c = mix(vec3(1.0, 0.85, 0.65), vec3(0.7, 0.85, 1.0), step(0.5, huePick));
+                if (huePick > 0.75) c = vec3(1.0, 0.98, 0.92);
+                float tw = 0.75 + 0.25 * sin(uTime * (1.5 + hash(cell)*2.0) + hash(cell)*6.28);
+                starCol += c * s * (0.35 + h * 1.0) * tw;
+              }
+            }
+          }
+          return starCol;
+        }
+
         void main() {
           vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.2;
 
@@ -267,14 +197,22 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          // Only disk/hole, transparent background so 3D stars show through
-          gl_FragColor = vec4(col, alpha);
+          vec3 dir = normalize(vel);
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 42.0; // denser
+          vec3 starCol = sampleStars(suv, 0.86);
+          starCol += sampleStars(suv * 1.8 + 5.0, 0.91) * 0.55;
+
+          float outside = step(1.5, minR) * (1.0 - alpha);
+          col += starCol * outside * 1.4;
+          float a = max(alpha, smoothstep(0.015, 0.15, length(col)));
+          a = max(a, outside * smoothstep(0.008, 0.06, length(starCol)));
+
+          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.01, 0.08, length(starCol))));
         }
       `,
     })
 
     const mesh = new THREE.Mesh(geo, mat)
-    mesh.renderOrder = 1
     scene.add(mesh)
 
     let time = 0
@@ -290,9 +228,6 @@ export default function AsciiBlackHole() {
       if (!visible.current) return
       time += 0.016
       mat.uniforms.uTime.value = time
-      faint.mat.uniforms.uTime.value = time
-      mid.mat.uniforms.uTime.value = time
-      bright.mat.uniforms.uTime.value = time
       renderer.render(scene, camera)
     }
     animate()
@@ -300,8 +235,6 @@ export default function AsciiBlackHole() {
     const onResize = () => {
       const w = container.clientWidth
       const h = container.clientHeight
-      camera.aspect = w / h
-      camera.updateProjectionMatrix()
       renderer.setSize(w, h)
       mat.uniforms.uResolution.value.set(w, h)
     }
@@ -314,9 +247,6 @@ export default function AsciiBlackHole() {
       renderer.dispose()
       geo.dispose()
       mat.dispose()
-      faint.geo.dispose(); faint.mat.dispose()
-      mid.geo.dispose(); mid.mat.dispose()
-      bright.geo.dispose(); bright.mat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
