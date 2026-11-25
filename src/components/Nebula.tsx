@@ -102,11 +102,11 @@ export default function Nebula() {
 
             if (d > 0.02) {
               // Hydrogen core, oxygen in the thinner gas
-              vec3 hAlpha = vec3(0.85, 0.18, 0.22);
-              vec3 oxygen = vec3(0.25, 0.55, 0.75);
-              vec3 dust = vec3(0.35, 0.12, 0.28);
-              vec3 emit = mix(oxygen, hAlpha, smoothstep(0.15, 0.55, d));
-              emit = mix(emit, dust, smoothstep(0.55, 0.85, d) * 0.4);
+              vec3 hAlpha = vec3(0.95, 0.14, 0.16);
+              vec3 oxygen = vec3(0.16, 0.5, 0.82);
+              // Thin gas blue, dense gas red. Brightness follows density.
+              vec3 emit = mix(oxygen, hAlpha, smoothstep(0.05, 0.5, d));
+              emit *= mix(0.45, 1.35, d);
 
               float absorb = exp(-d * 0.7);
               col += trans * emit * d * 0.55;
