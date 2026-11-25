@@ -25,6 +25,8 @@ export default function AsciiBlackHole() {
 
     const geo = new THREE.PlaneGeometry(2, 2)
     const mat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
       uniforms: {
         uTime: { value: 0 },
         uResolution: { value: new THREE.Vector2(container.clientWidth, container.clientHeight) },
@@ -181,27 +183,80 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          // Round stars on the bent ray, enough of them to read as a sky
-          vec3 dir = normalize(vel);
-          vec3 starCol = vec3(0.0);
-          for (int i = 0; i < 48; i++) {
-            float fi = float(i);
-            float h1 = fract(sin(fi * 12.9898) * 43758.5453);
-            float h2 = fract(sin(fi * 78.233) * 24634.6345);
-            float h3 = fract(sin(fi * 39.346) * 13976.312);
-            vec3 sd = normalize(vec3(h1 * 2.0 - 1.0, h2 * 0.6 - 0.3, 0.3 + h3));
-            float d = length(dir - sd);
-            float s = exp(-d * d * 220.0);
-            vec3 c = mix(vec3(1.0, 0.94, 0.82), vec3(0.72, 0.84, 1.0), step(0.5, h3));
-            starCol += c * s * (0.5 + h1);
-          }
-          float outside = step(1.5, minR) * (1.0 - alpha);
-          col += starCol * outside;
-
-          gl_FragColor = vec4(col, 1.0);
+          gl_FragColor = vec4(col, max(alpha, smoothstep(0.02, 0.2, length(col))));
         }
       `,
     })
+
+
+    // Same star field as the nebula: round sprites, own color, own twinkle
+    const dot = document.createElement('canvas')
+    dot.width = dot.height = 32
+    const dctx = dot.getContext('2d')!
+    const g = dctx.createRadialGradient(16, 16, 0, 16, 16, 16)
+    g.addColorStop(0, 'rgba(255,255,255,1)')
+    g.addColorStop(0.4, 'rgba(255,255,255,0.75)')
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    dctx.fillStyle = g
+    dctx.fillRect(0, 0, 32, 32)
+    const dotTex = new THREE.CanvasTexture(dot)
+    const warm = new THREE.Color(0xffc9a0)
+    const cool = new THREE.Color(0xb9d4ff)
+    const white = new THREE.Color(0xfff6ea)
+    const n = 180
+    const pos = new Float32Array(n * 3)
+    const phase = new Float32Array(n)
+    const freq = new Float32Array(n)
+    const col = new Float32Array(n * 3)
+    for (let i = 0; i < n; i++) {
+      pos[i * 3] = (Math.random() - 0.5) * 2
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 2
+      pos[i * 3 + 2] = -0.5
+      phase[i] = Math.random() * Math.PI * 2
+      freq[i] = 0.6 + Math.random() * 2.4
+      const pick = Math.random()
+      const c = pick < 0.25 ? warm : pick < 0.5 ? cool : white
+      col[i * 3] = c.r; col[i * 3 + 1] = c.g; col[i * 3 + 2] = c.b
+    }
+    const starGeo = new THREE.BufferGeometry()
+    starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
+    starGeo.setAttribute('phase', new THREE.BufferAttribute(phase, 1))
+    starGeo.setAttribute('freq', new THREE.BufferAttribute(freq, 1))
+    starGeo.setAttribute('starColor', new THREE.BufferAttribute(col, 3))
+    const starMat = new THREE.ShaderMaterial({
+      transparent: true,
+      depthWrite: false,
+      blending: THREE.AdditiveBlending,
+      uniforms: { uTime: { value: 0 }, uSize: { value: 2.4 }, uMap: { value: dotTex } },
+      vertexShader: /* glsl */ `
+        attribute float phase;
+        attribute float freq;
+        attribute vec3 starColor;
+        uniform float uTime;
+        uniform float uSize;
+        varying float vTwinkle;
+        varying vec3 vColor;
+        void main() {
+          vColor = starColor;
+          float a = sin(uTime * freq + phase);
+          float b = sin(uTime * freq * 1.7 + phase * 2.3);
+          vTwinkle = 0.84 + 0.16 * (a * 0.6 + b * 0.4);
+          gl_PointSize = uSize;
+          gl_Position = vec4(position.xy, 0.0, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform sampler2D uMap;
+        varying float vTwinkle;
+        varying vec3 vColor;
+        void main() {
+          float a = texture2D(uMap, gl_PointCoord).a;
+          if (a < 0.05) discard;
+          gl_FragColor = vec4(vColor, a * vTwinkle);
+        }
+      `,
+    })
+    scene.add(new THREE.Points(starGeo, starMat))
 
     const mesh = new THREE.Mesh(geo, mat)
     scene.add(mesh)
@@ -219,6 +274,7 @@ export default function AsciiBlackHole() {
       if (!visible.current) return
       time += 0.016
       mat.uniforms.uTime.value = time
+      starMat.uniforms.uTime.value = time
       renderer.render(scene, camera)
     }
     animate()
@@ -238,6 +294,8 @@ export default function AsciiBlackHole() {
       renderer.dispose()
       geo.dispose()
       mat.dispose()
+      starGeo.dispose()
+      starMat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
