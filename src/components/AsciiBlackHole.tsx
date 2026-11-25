@@ -183,7 +183,10 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          gl_FragColor = vec4(col, max(alpha, smoothstep(0.02, 0.2, length(col))));
+          float cover = 1.0 - smoothstep(0.42, 0.62, length(uv));
+          col = mix(col, vec3(0.0), cover);
+          float a = max(alpha, smoothstep(0.02, 0.2, length(col)));
+          gl_FragColor = vec4(col, max(a, cover));
         }
       `,
     })
@@ -241,8 +244,19 @@ export default function AsciiBlackHole() {
           float a = sin(uTime * freq + phase);
           float b = sin(uTime * freq * 1.7 + phase * 2.3);
           vTwinkle = 0.84 + 0.16 * (a * 0.6 + b * 0.4);
+          vec2 p = position.xy;
+          float r = length(p);
+          if (r < 0.2) {
+            gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
+            gl_PointSize = 0.0;
+            return;
+          }
+          vec2 n = p / r;
+          vec2 tang = vec2(-n.y, n.x);
+          float bend = 0.05 / r;
+          p += n * bend * 0.35 + tang * bend;
           gl_PointSize = uSize;
-          gl_Position = vec4(position.xy, 0.0, 1.0);
+          gl_Position = vec4(p, 0.0, 1.0);
         }
       `,
       fragmentShader: /* glsl */ `
