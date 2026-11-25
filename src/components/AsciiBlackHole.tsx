@@ -181,6 +181,16 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
+          // Background stars, sampled on the deflected ray so gravity bends them
+          vec3 dir = normalize(vel);
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 8.0;
+          vec2 cell = floor(suv);
+          float h = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
+          float star = smoothstep(0.97, 1.0, h);
+          star *= smoothstep(0.35, 0.0, length(fract(suv) - 0.5));
+          vec3 starCol = mix(vec3(0.7, 0.8, 1.0), vec3(1.0, 0.9, 0.7), fract(h * 17.0));
+          col += starCol * star * (1.0 - alpha) * 1.4;
+
           gl_FragColor = vec4(col, 1.0);
         }
       `,
