@@ -181,16 +181,25 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          // Background stars, sampled on the deflected ray so gravity bends them
+          // Soft round stars on the deflected ray
           vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 8.0;
-          vec2 cell = floor(suv);
-          float h = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
-          float star = smoothstep(0.97, 1.0, h);
-          star *= smoothstep(0.35, 0.0, length(fract(suv) - 0.5));
-          vec3 starCol = mix(vec3(0.7, 0.8, 1.0), vec3(1.0, 0.9, 0.7), fract(h * 17.0));
-          float outside = step(1.4, minR) * (1.0 - alpha);
-          col += starCol * star * outside * 1.4;
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 14.0;
+          float stars = 0.0;
+          vec3 starCol = vec3(0.0);
+          for (int k = 0; k < 3; k++) {
+            vec2 cell = floor(suv) + float(k) * 17.0;
+            float h = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
+            if (h > 0.82) {
+              vec2 local = fract(suv) - 0.5;
+              float d = length(local);
+              float s = exp(-d * d * 80.0);
+              vec3 c = mix(vec3(1.0, 0.95, 0.85), vec3(0.75, 0.85, 1.0), step(0.5, fract(h * 13.0)));
+              stars += s;
+              starCol += c * s;
+            }
+          }
+          float outside = step(1.5, minR) * (1.0 - alpha);
+          col += starCol * outside * 1.6;
 
           gl_FragColor = vec4(col, 1.0);
         }
