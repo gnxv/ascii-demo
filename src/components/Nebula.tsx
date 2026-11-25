@@ -105,7 +105,7 @@ export default function Nebula() {
               vec3 hAlpha = vec3(0.95, 0.14, 0.16);
               vec3 oxygen = vec3(0.16, 0.5, 0.82);
               // Thin gas blue, dense gas red. Brightness follows density.
-              vec3 emit = mix(oxygen, hAlpha, smoothstep(0.05, 0.5, d));
+              vec3 emit = mix(oxygen, hAlpha, smoothstep(0.12, 0.62, d));
               emit *= mix(0.45, 1.35, d);
 
               float absorb = exp(-d * 0.7);
