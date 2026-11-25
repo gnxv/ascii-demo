@@ -183,23 +183,35 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          // Stars on the bent ray. Same gravity that bends the disk moves them.
+          // Sky of point stars, read with the bent ray.
+          // Far away they are dots. Near the hole the ray bends and they stretch into arcs.
           vec3 dir = normalize(vel);
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 18.0;
           vec3 starCol = vec3(0.0);
-          for (int i = 0; i < 36; i++) {
-            float fi = float(i);
-            float h1 = fract(sin(fi * 12.9898) * 43758.5453);
-            float h2 = fract(sin(fi * 78.233) * 24634.6345);
-            float h3 = fract(sin(fi * 39.346) * 13976.312);
-            vec3 sd = normalize(vec3(h1 * 2.0 - 1.0, h2 * 0.8 - 0.4, 0.2 + h3));
-            float d = length(dir - sd);
-            float s = exp(-d * d * 160.0);
-            vec3 c = mix(vec3(1.0, 0.94, 0.82), vec3(0.7, 0.84, 1.0), step(0.5, h3));
-            starCol += c * s * (0.7 + h1);
+          vec2 base = floor(suv);
+          vec2 fr = fract(suv);
+          for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+              vec2 cell = base + vec2(float(i), float(j));
+              float h = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
+              if (h > 0.78) {
+                vec2 jitter = vec2(
+                  fract(sin(dot(cell, vec2(269.5, 183.3))) * 43758.5453),
+                  fract(sin(dot(cell, vec2(419.2, 371.9))) * 43758.5453)
+                );
+                vec2 local = fr - vec2(float(i), float(j)) - jitter;
+                float d = length(local);
+                float s = exp(-d * d * 90.0);
+                vec3 c = mix(vec3(1.0, 0.93, 0.8), vec3(0.7, 0.82, 1.0), step(0.5, h));
+                starCol += c * s * (0.5 + h);
+              }
+            }
           }
-          float outside = step(1.45, minR) * (1.0 - alpha);
-          col += starCol * outside;
+          float outside = step(1.5, minR) * (1.0 - alpha);
+          col += starCol * outside * 1.3;
           float a = max(alpha, smoothstep(0.02, 0.2, length(col)));
+          a = max(a, outside * smoothstep(0.015, 0.12, length(starCol)));
+
           gl_FragColor = vec4(col, max(a, outside * smoothstep(0.02, 0.15, length(starCol))));
         }
       `,
