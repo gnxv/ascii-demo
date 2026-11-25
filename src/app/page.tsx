@@ -4,7 +4,6 @@ import AsciiJellyfish from "@/components/AsciiJellyfish";
 import ThreeFishSchool from "@/components/ThreeFishSchool";
 import AsciiBlackHole from "@/components/AsciiBlackHole";
 import OceanStorm from "@/components/OceanStorm";
-import Pulsar from "@/components/Pulsar";
 import Nebula from "@/components/Nebula";
 import AsciiFrogs from "@/components/AsciiFrogs";
 
@@ -257,7 +256,6 @@ export default function Home() {
   }, []);
 
   const scenes = [
-    { id: "pulsar", title: "", component: <Pulsar />, bg: "bg-black" },
     { id: "jellyfish", title: "", component: <AsciiJellyfish />, bg: "bg-black" },
     { id: "nebula", title: "", component: <Nebula />, bg: "bg-black" },
     { id: "fish", title: "", component: <ThreeFishSchool />, bg: "bg-black" },
