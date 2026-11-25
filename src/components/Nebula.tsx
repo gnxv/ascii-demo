@@ -97,7 +97,7 @@ export default function Nebula() {
             float d = fbm(sp);
             d = smoothstep(0.38, 0.62, d);
             // Fade at the edges of the volume
-            float edge = 1.0 - smoothstep(4.5, 7.5, length(p));
+            float edge = 1.0 - smoothstep(3.2, 8.5, length(p));
             d *= edge;
 
             if (d > 0.02) {
@@ -138,18 +138,31 @@ export default function Nebula() {
     dctx.fillRect(0, 0, 32, 32)
     const dotTex = new THREE.CanvasTexture(dot)
 
-    function makeStars(n: number, spread: number, size: number, color: number, opacity: number) {
+    const warm = new THREE.Color(0xffc9a0)
+    const cool = new THREE.Color(0xb9d4ff)
+    const white = new THREE.Color(0xfff6ea)
+    function makeStars(n: number, spread: number, size: number, opacity: number) {
       const pos = new Float32Array(n * 3)
       const phase = new Float32Array(n)
+      const freq = new Float32Array(n)
+      const col = new Float32Array(n * 3)
       for (let i = 0; i < n; i++) {
         pos[i * 3] = (Math.random() - 0.5) * spread
         pos[i * 3 + 1] = (Math.random() - 0.5) * spread * 0.7
         pos[i * 3 + 2] = (Math.random() - 0.5) * spread
         phase[i] = Math.random() * Math.PI * 2
+        freq[i] = 0.6 + Math.random() * 2.4
+        const pick = Math.random()
+        const c = pick < 0.25 ? warm : pick < 0.5 ? cool : white
+        col[i * 3] = c.r
+        col[i * 3 + 1] = c.g
+        col[i * 3 + 2] = c.b
       }
       const geo = new THREE.BufferGeometry()
       geo.setAttribute('position', new THREE.BufferAttribute(pos, 3))
       geo.setAttribute('phase', new THREE.BufferAttribute(phase, 1))
+      geo.setAttribute('freq', new THREE.BufferAttribute(freq, 1))
+      geo.setAttribute('starColor', new THREE.BufferAttribute(col, 3))
       const mat = new THREE.ShaderMaterial({
         transparent: true,
         depthWrite: false,
@@ -157,18 +170,21 @@ export default function Nebula() {
         uniforms: {
           uTime: { value: 0 },
           uSize: { value: size },
-          uColor: { value: new THREE.Color(color) },
           uOpacity: { value: opacity },
           uMap: { value: dotTex },
         },
         vertexShader: /* glsl */ `
           attribute float phase;
+          attribute float freq;
           uniform float uTime;
           uniform float uSize;
           varying float vTwinkle;
+          attribute vec3 starColor;
+          varying vec3 vColor;
           void main() {
-            float a = sin(uTime * 2.6 + phase);
-            float b = sin(uTime * 4.3 + phase * 1.9);
+            vColor = starColor;
+            float a = sin(uTime * freq + phase);
+            float b = sin(uTime * freq * 1.7 + phase * 2.3);
             vTwinkle = 0.84 + 0.16 * (a * 0.6 + b * 0.4);
             vec4 mv = modelViewMatrix * vec4(position, 1.0);
             gl_PointSize = uSize;
@@ -176,23 +192,23 @@ export default function Nebula() {
           }
         `,
         fragmentShader: /* glsl */ `
-          uniform vec3 uColor;
           uniform float uOpacity;
           uniform sampler2D uMap;
           varying float vTwinkle;
+          varying vec3 vColor;
           void main() {
             float a = texture2D(uMap, gl_PointCoord).a;
             if (a < 0.05) discard;
-            gl_FragColor = vec4(uColor, a * uOpacity * vTwinkle);
+            gl_FragColor = vec4(vColor, a * uOpacity * vTwinkle);
           }
         `,
       })
       scene.add(new THREE.Points(geo, mat))
       return { geo, mat }
     }
-    const faint = makeStars(400, 22, 2.2, 0xfff6ea, 0.7)
-    const mid = makeStars(60, 14, 3.4, 0xffe8c8, 0.9)
-    const bright = makeStars(12, 10, 5.0, 0xffffff, 1)
+    const faint = makeStars(400, 22, 2.2, 0.7)
+    const mid = makeStars(60, 14, 3.4, 0.9)
+    const bright = makeStars(12, 10, 5.0, 1)
 
     let time = Math.random() * 200
     let animId: number
