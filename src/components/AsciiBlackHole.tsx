@@ -162,7 +162,7 @@ export default function AsciiBlackHole() {
               vec3 hit = mix(pos, next, t);
               float hr = length(hit.xz);
               // The hole itself, soft edge, ring on the rim
-              if (hr < 1.7) {
+              if (hr < 1.7 && hit.z < 0.3) {
                 float edge = smoothstep(1.05, 1.55, hr);
                 float ring = exp(-pow((hr - 1.5) * 9.0, 2.0));
                 col += vec3(1.0, 0.92, 0.75) * ring * 0.7;
