@@ -130,6 +130,38 @@ export default function AsciiBlackHole() {
           return col * intensity;
         }
 
+        // Better procedural stars with color variation and size
+        vec3 sampleStars(vec2 suv, float density) {
+          vec3 starCol = vec3(0.0);
+          vec2 base = floor(suv);
+          vec2 fr = fract(suv);
+          for (int j = -1; j <= 1; j++) {
+            for (int i = -1; i <= 1; i++) {
+              vec2 cell = base + vec2(float(i), float(j));
+              float h = hash(cell);
+              if (h > density) {
+                vec2 jitter = vec2(
+                  hash(cell + vec2(1.3, 2.7)),
+                  hash(cell + vec2(4.1, 0.9))
+                );
+                vec2 local = fr - vec2(float(i), float(j)) - jitter;
+                float d = length(local);
+                // Size variation: some bigger
+                float size = mix(60.0, 140.0, hash(cell + 5.0));
+                float s = exp(-d * d * size);
+                // Color: warm / cool / white
+                float huePick = hash(cell + 9.0);
+                vec3 c = mix(vec3(1.0, 0.85, 0.65), vec3(0.7, 0.85, 1.0), step(0.5, huePick));
+                if (huePick > 0.75) c = vec3(1.0, 0.98, 0.92);
+                // Twinkle
+                float tw = 0.75 + 0.25 * sin(uTime * (1.5 + hash(cell)*2.0) + hash(cell)*6.28);
+                starCol += c * s * (0.4 + h * 1.2) * tw;
+              }
+            }
+          }
+          return starCol;
+        }
+
         void main() {
           vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.2;
 
@@ -144,7 +176,7 @@ export default function AsciiBlackHole() {
           // Simple ray march with gravitational deflection
           vec3 pos = ro;
           vec3 vel = rd;
-          const int STEPS = 64;
+          const int STEPS = 80;
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
@@ -152,11 +184,11 @@ export default function AsciiBlackHole() {
             if (r < 1.05) break; // captured
 
             // Deflection toward center (approx Schwarzschild)
-            vec3 acc = -1.8 * pos / pow(r, 4.0);
-            vel += acc * 0.4;
+            vec3 acc = -2.2 * pos / pow(r, 4.0);
+            vel += acc * 0.35;
             vel = normalize(vel) * length(rd);
 
-            vec3 next = pos + vel * 0.28;
+            vec3 next = pos + vel * 0.22;
 
             // Plane crossing = disk hit
             if (pos.y * next.y < 0.0) {
@@ -186,37 +218,21 @@ export default function AsciiBlackHole() {
           // Sky of point stars, read with the bent ray.
           // Far away they are dots. Near the hole the ray bends and they stretch into arcs.
           vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 18.0;
-          vec3 starCol = vec3(0.0);
-          vec2 base = floor(suv);
-          vec2 fr = fract(suv);
-          for (int j = -1; j <= 1; j++) {
-            for (int i = -1; i <= 1; i++) {
-              vec2 cell = base + vec2(float(i), float(j));
-              float h = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
-              if (h > 0.78) {
-                vec2 jitter = vec2(
-                  fract(sin(dot(cell, vec2(269.5, 183.3))) * 43758.5453),
-                  fract(sin(dot(cell, vec2(419.2, 371.9))) * 43758.5453)
-                );
-                vec2 local = fr - vec2(float(i), float(j)) - jitter;
-                float d = length(local);
-                float s = exp(-d * d * 90.0);
-                vec3 c = mix(vec3(1.0, 0.93, 0.8), vec3(0.7, 0.82, 1.0), step(0.5, h));
-                starCol += c * s * (0.5 + h);
-              }
-            }
-          }
-          float outside = step(1.5, minR) * (1.0 - alpha);
-          col += starCol * outside * 1.3;
-          float a = max(alpha, smoothstep(0.02, 0.2, length(col)));
-          a = max(a, outside * smoothstep(0.015, 0.12, length(starCol)));
+          // Higher density spherical map for better stars
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 28.0;
+          vec3 starCol = sampleStars(suv, 0.82);
+          // Second finer layer for more stars
+          starCol += sampleStars(suv * 1.7 + 3.0, 0.88) * 0.6;
 
-          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.02, 0.15, length(starCol))));
+          float outside = step(1.5, minR) * (1.0 - alpha);
+          col += starCol * outside * 1.6;
+          float a = max(alpha, smoothstep(0.02, 0.2, length(col)));
+          a = max(a, outside * smoothstep(0.01, 0.08, length(starCol)));
+
+          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.015, 0.1, length(starCol))));
         }
       `,
     })
-
 
     const mesh = new THREE.Mesh(geo, mat)
     scene.add(mesh)
