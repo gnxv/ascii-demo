@@ -181,25 +181,22 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          // Soft round stars on the deflected ray
+          // Fixed stars, looked up on the bent ray. Round, not a smeared grid.
           vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 14.0;
-          float stars = 0.0;
           vec3 starCol = vec3(0.0);
-          for (int k = 0; k < 3; k++) {
-            vec2 cell = floor(suv) + float(k) * 17.0;
-            float h = fract(sin(dot(cell, vec2(127.1, 311.7))) * 43758.5453);
-            if (h > 0.82) {
-              vec2 local = fract(suv) - 0.5;
-              float d = length(local);
-              float s = exp(-d * d * 80.0);
-              vec3 c = mix(vec3(1.0, 0.95, 0.85), vec3(0.75, 0.85, 1.0), step(0.5, fract(h * 13.0)));
-              stars += s;
-              starCol += c * s;
-            }
+          for (int i = 0; i < 24; i++) {
+            float fi = float(i);
+            float h1 = fract(sin(fi * 12.9898) * 43758.5453);
+            float h2 = fract(sin(fi * 78.233) * 24634.6345);
+            float h3 = fract(sin(fi * 39.346) * 13976.312);
+            vec3 sd = normalize(vec3(h1 * 2.0 - 1.0, h2 * 2.0 - 1.0, h3 * 2.0 - 1.0));
+            float d = length(dir - sd);
+            float s = exp(-d * d * 900.0);
+            vec3 c = mix(vec3(1.0, 0.94, 0.82), vec3(0.72, 0.84, 1.0), step(0.5, h3));
+            starCol += c * s * (0.6 + h1);
           }
           float outside = step(1.5, minR) * (1.0 - alpha);
-          col += starCol * outside * 1.6;
+          col += starCol * outside;
 
           gl_FragColor = vec4(col, 1.0);
         }
