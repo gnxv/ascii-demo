@@ -181,19 +181,19 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          // Fixed stars, looked up on the bent ray. Round, not a smeared grid.
+          // Round stars on the bent ray, enough of them to read as a sky
           vec3 dir = normalize(vel);
           vec3 starCol = vec3(0.0);
-          for (int i = 0; i < 24; i++) {
+          for (int i = 0; i < 48; i++) {
             float fi = float(i);
             float h1 = fract(sin(fi * 12.9898) * 43758.5453);
             float h2 = fract(sin(fi * 78.233) * 24634.6345);
             float h3 = fract(sin(fi * 39.346) * 13976.312);
-            vec3 sd = normalize(vec3(h1 * 2.0 - 1.0, h2 * 2.0 - 1.0, h3 * 2.0 - 1.0));
+            vec3 sd = normalize(vec3(h1 * 2.0 - 1.0, h2 * 0.6 - 0.3, 0.3 + h3));
             float d = length(dir - sd);
-            float s = exp(-d * d * 900.0);
+            float s = exp(-d * d * 220.0);
             vec3 c = mix(vec3(1.0, 0.94, 0.82), vec3(0.72, 0.84, 1.0), step(0.5, h3));
-            starCol += c * s * (0.6 + h1);
+            starCol += c * s * (0.5 + h1);
           }
           float outside = step(1.5, minR) * (1.0 - alpha);
           col += starCol * outside;
