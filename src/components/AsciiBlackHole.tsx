@@ -244,15 +244,16 @@ export default function AsciiBlackHole() {
           vTwinkle = 0.84 + 0.16 * (a * 0.6 + b * 0.4);
           vec2 p = position.xy;
           float r = length(p);
-          if (r < 0.2) {
+          // Only the hole itself hides a star. Around it they stay, bent.
+          if (r < 0.08) {
             gl_Position = vec4(2.0, 2.0, 0.0, 1.0);
             gl_PointSize = 0.0;
             return;
           }
           vec2 n = p / r;
           vec2 tang = vec2(-n.y, n.x);
-          float bend = 0.05 / r;
-          p += n * bend * 0.35 + tang * bend;
+          float bend = 0.045 / max(r, 0.12);
+          p += tang * bend + n * bend * 0.25;
           gl_PointSize = uSize;
           gl_Position = vec4(p, 0.0, 1.0);
         }
