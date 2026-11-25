@@ -172,11 +172,11 @@ export default function AsciiBlackHole() {
           }
 
           // Photon ring from closest approach, not from screen position
-          float ring = exp(-pow((minR - 1.55) * 7.0, 2.0));
-          col += vec3(1.0, 0.92, 0.75) * ring * 0.7;
+          float ring = exp(-pow((minR - 1.4) * 14.0, 2.0));
+          col += vec3(1.0, 0.92, 0.75) * ring * 0.45;
 
-          // Soft shadow: rays that fell in or skimmed the hole fade out
-          float shadow = smoothstep(1.02, 1.7, minR);
+          // Shadow only for rays that fell in, so the disk is not clipped
+          float shadow = smoothstep(1.02, 1.28, minR);
           col *= shadow;
 
           gl_FragColor = vec4(col, 1.0);
