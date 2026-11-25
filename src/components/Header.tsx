@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 import { gsap } from "gsap";
 
 const menuItems = [
-  { label: "Pulsar", href: "#pulsar" },
   { label: "Jelly", href: "#jellyfish" },
   { label: "Nebula", href: "#nebula" },
   { label: "Fish", href: "#fish" },
