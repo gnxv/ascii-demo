@@ -189,7 +189,8 @@ export default function AsciiBlackHole() {
           float star = smoothstep(0.97, 1.0, h);
           star *= smoothstep(0.35, 0.0, length(fract(suv) - 0.5));
           vec3 starCol = mix(vec3(0.7, 0.8, 1.0), vec3(1.0, 0.9, 0.7), fract(h * 17.0));
-          col += starCol * star * (1.0 - alpha) * 1.4;
+          float outside = step(1.4, minR) * (1.0 - alpha);
+          col += starCol * star * outside * 1.4;
 
           gl_FragColor = vec4(col, 1.0);
         }
