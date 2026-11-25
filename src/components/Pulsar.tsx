@@ -34,12 +34,12 @@ export default function Pulsar() {
 
     // Neutron star
     const core = new THREE.Mesh(
-      new THREE.SphereGeometry(0.28, 32, 32),
+      new THREE.SphereGeometry(0.16, 32, 32),
       new THREE.MeshBasicMaterial({ color: 0xfff4e8 })
     )
     scene.add(core)
     const glow = new THREE.Mesh(
-      new THREE.SphereGeometry(0.55, 24, 24),
+      new THREE.SphereGeometry(0.42, 24, 24),
       new THREE.MeshBasicMaterial({
         color: 0xffc9a0,
         transparent: true,
@@ -50,20 +50,45 @@ export default function Pulsar() {
     )
     scene.add(glow)
 
-    // Beams along the magnetic axis, tilted from the spin axis
+    // Beams are light, not solid cones: narrow on axis, soft edge, fade with distance
     const beams = new THREE.Group()
-    beams.rotation.z = 0.55
-    const beamMat = new THREE.MeshBasicMaterial({
-      color: 0x9ecbff,
+    beams.rotation.z = 0.62
+    const beamMat = new THREE.ShaderMaterial({
       transparent: true,
-      opacity: 0.28,
-      blending: THREE.AdditiveBlending,
       depthWrite: false,
+      blending: THREE.AdditiveBlending,
       side: THREE.DoubleSide,
+      uniforms: { uPulse: { value: 0.3 } },
+      vertexShader: /* glsl */ `
+        varying vec2 vUv;
+        varying vec3 vPos;
+        void main() {
+          vUv = uv;
+          vPos = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: /* glsl */ `
+        uniform float uPulse;
+        varying vec2 vUv;
+        varying vec3 vPos;
+        void main() {
+          float along = vUv.y;
+          float radial = length(vPos.xz);
+          float core = exp(-radial * radial * 18.0);
+          float edge = exp(-radial * radial * 4.0) * 0.35;
+          float fade = exp(-along * 1.6) * smoothstep(0.0, 0.08, along);
+          float beam = (core + edge) * fade;
+          vec3 col = mix(vec3(0.55, 0.75, 1.0), vec3(1.0, 0.95, 0.85), core);
+          float alpha = beam * (0.35 + uPulse * 0.9);
+          if (alpha < 0.02) discard;
+          gl_FragColor = vec4(col * beam, alpha);
+        }
+      `,
     })
     function makeBeam(dir: number) {
-      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.55, 7, 24, 1, true), beamMat)
-      cone.position.y = dir * 3.7
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.7, 8, 32, 1, true), beamMat)
+      cone.position.y = dir * 4.1
       if (dir < 0) cone.rotation.x = Math.PI
       return cone
     }
@@ -126,7 +151,7 @@ export default function Pulsar() {
       toCam.copy(camera.position).normalize()
       const facing = Math.abs(axis.dot(toCam))
       const pulse = Math.pow(facing, 6)
-      beamMat.opacity = 0.16 + pulse * 0.45
+      beamMat.uniforms.uPulse.value = 0.15 + pulse * 0.85
       glow.scale.setScalar(1 + pulse * 0.35)
       flash.intensity = pulse * 6
       renderer.render(scene, camera)
