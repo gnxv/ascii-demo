@@ -160,6 +160,16 @@ export default function AsciiBlackHole() {
             if (pos.y * next.y < 0.0) {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
+              float hr = length(hit.xz);
+              // The hole itself, soft edge, ring on the rim
+              if (hr < 1.7) {
+                float edge = smoothstep(1.05, 1.55, hr);
+                float ring = exp(-pow((hr - 1.5) * 9.0, 2.0));
+                col += vec3(1.0, 0.92, 0.75) * ring * 0.7;
+                col *= edge;
+                alpha = 1.0;
+                break;
+              }
               vec3 dc = diskColor(hit, vel);
               float a = clamp(length(dc) * 0.55, 0.0, 0.85);
               col += (1.0 - alpha) * dc;
@@ -170,14 +180,6 @@ export default function AsciiBlackHole() {
             pos = next;
             if (r > 30.0) break;
           }
-
-          // Photon ring from closest approach, not from screen position
-          float ring = exp(-pow((minR - 1.4) * 14.0, 2.0));
-          col += vec3(1.0, 0.92, 0.75) * ring * 0.45;
-
-          // Shadow only for rays that fell in, so the disk is not clipped
-          float shadow = smoothstep(1.02, 1.28, minR);
-          col *= shadow;
 
           gl_FragColor = vec4(col, 1.0);
         }
