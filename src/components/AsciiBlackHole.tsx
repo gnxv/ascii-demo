@@ -183,10 +183,8 @@ export default function AsciiBlackHole() {
             if (r > 30.0) break;
           }
 
-          float cover = 1.0 - smoothstep(0.42, 0.62, length(uv));
-          col = mix(col, vec3(0.0), cover);
           float a = max(alpha, smoothstep(0.02, 0.2, length(col)));
-          gl_FragColor = vec4(col, max(a, cover));
+          gl_FragColor = vec4(col, a);
         }
       `,
     })
