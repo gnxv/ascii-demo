@@ -69,21 +69,21 @@ export default function AsciiBlackHole() {
 
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
-          float outer = 9.0;
-          if (r < 1.55 || r > outer) return vec3(0.0);
+          float outer = 8.5;
+          if (r < 1.6 || r > outer) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
           float safeR = max(r, 0.2);
 
-          float omega = 3.4 / pow(safeR, 1.5);
+          float omega = 3.2 / pow(safeR, 1.5);
           float turns = uTime * omega / 6.28318;
           float p1 = fract(turns);
           float p2 = fract(turns + 0.5);
           float w = abs(p1 - 0.5) * 2.0;
 
-          float spiral = sin((ang - p1 * 6.28318) * 2.0 + log(safeR) * 3.5) * 0.5 + 0.5;
+          float spiral = sin((ang - p1 * 6.28318) * 2.0 + log(safeR) * 3.2) * 0.5 + 0.5;
 
-          float rCoord = safeR * 0.45;
+          float rCoord = safeR * 0.42;
           vec2 uvA = vec2(ang / 6.28318 - p1, rCoord);
           vec2 uvB = vec2(ang / 6.28318 - p2, rCoord);
           float turb = mix(fbm(uvA * 3.0), fbm(uvB * 3.0), w);
@@ -95,125 +95,83 @@ export default function AsciiBlackHole() {
             w
           );
 
-          float flow = spiral * 0.35 + turb * 0.4 + fine * 0.15 + clumps * 0.25;
+          float flow = spiral * 0.32 + turb * 0.42 + fine * 0.16 + clumps * 0.22;
           flow = clamp(flow, 0.0, 1.0);
 
-          float t = smoothstep(outer, 1.85, r);
-          vec3 hot = vec3(1.0, 0.88, 0.5);
-          vec3 mid = vec3(1.0, 0.38, 0.06);
-          vec3 cool = vec3(0.55, 0.04, 0.01);
-          vec3 col = mix(cool, mid, smoothstep(0.0, 0.45, t));
-          col = mix(col, hot, smoothstep(0.45, 1.0, t));
+          float t = smoothstep(outer, 1.9, r);
+          vec3 hot = vec3(1.0, 0.86, 0.48);
+          vec3 mid = vec3(1.0, 0.36, 0.05);
+          vec3 cool = vec3(0.5, 0.035, 0.008);
+          vec3 col = mix(cool, mid, smoothstep(0.0, 0.4, t));
+          col = mix(col, hot, smoothstep(0.4, 1.0, t));
 
           vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
-          float beta = 0.5 / sqrt(safeR);
-          float doppler = 1.0 + 0.85 * beta * dot(tangent, -rayDir);
-          doppler = clamp(doppler, 0.65, 1.6);
+          float beta = 0.48 / sqrt(safeR);
+          float doppler = 1.0 + 0.8 * beta * dot(tangent, -rayDir);
+          doppler = clamp(doppler, 0.62, 1.55);
 
-          float intensity = (0.27 + flow * 1.05) * doppler;
-          intensity *= smoothstep(1.55, 2.1, r) * smoothstep(outer, outer * 0.8, r);
-          intensity *= 1.0 + 1.35 * smoothstep(3.3, 1.72, r);
+          float intensity = (0.25 + flow * 1.1) * doppler;
+          intensity *= smoothstep(1.6, 2.15, r) * smoothstep(outer, outer * 0.75, r);
+          intensity *= 1.0 + 1.4 * smoothstep(3.2, 1.75, r);
 
           return col * intensity;
         }
 
-        vec3 sampleStars(vec2 suv, float density) {
-          vec3 starCol = vec3(0.0);
-          vec2 base = floor(suv);
-          vec2 fr = fract(suv);
-          for (int j = -1; j <= 1; j++) {
-            for (int i = -1; i <= 1; i++) {
-              vec2 cell = base + vec2(float(i), float(j));
-              float h = hash(cell);
-              if (h > density) {
-                vec2 jitter = vec2(
-                  hash(cell + vec2(1.3, 2.7)),
-                  hash(cell + vec2(4.1, 0.9))
-                );
-                vec2 local = fr - vec2(float(i), float(j)) - jitter;
-                float d = length(local);
-                float size = mix(160.0, 340.0, hash(cell + 5.0));
-                float s = exp(-d * d * size);
-                float huePick = hash(cell + 9.0);
-                vec3 c = mix(vec3(1.0, 0.85, 0.65), vec3(0.7, 0.85, 1.0), step(0.5, huePick));
-                if (huePick > 0.75) c = vec3(1.0, 0.98, 0.92);
-                float tw = 0.76 + 0.24 * sin(uTime * (1.5 + hash(cell)*1.9) + hash(cell)*6.28);
-                starCol += c * s * (0.28 + h * 0.85) * tw;
-              }
-            }
-          }
-          return starCol;
-        }
-
         void main() {
-          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.05;
+          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 1.85;
 
-          // Slightly higher camera for better lower-disk visibility + milder tilt
-          vec3 ro = vec3(0.0, 2.35, -12.2);
-          vec3 rd = normalize(vec3(uv.x, uv.y - 0.02, 1.0));
+          // Classic elevated side view — good disk geometry, both near and far side visible
+          vec3 ro = vec3(0.0, 2.8, -9.8);
+          vec3 rd = normalize(vec3(uv.x * 0.92, uv.y - 0.15, 1.0));
 
           vec3 col = vec3(0.0);
           float alpha = 0.0;
-          float minR = 99.0;
 
           vec3 pos = ro;
           vec3 vel = rd;
-          const int STEPS = 110;
+          const int STEPS = 100;
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
-            minR = min(minR, r);
-            if (r < 1.08) break;
+            if (r < 1.1) {
+              alpha = 1.0;
+              break;
+            }
 
-            // Softer gravity so lower rays still hit the disk instead of being swallowed
-            vec3 acc = -1.5 * pos / max(pow(r, 4.0), 0.05);
-            vel += acc * 0.26;
+            vec3 acc = -1.35 * pos / max(pow(r, 4.0), 0.08);
+            vel += acc * 0.22;
             vel = normalize(vel) * length(rd);
 
-            vec3 next = pos + vel * 0.14;
+            vec3 next = pos + vel * 0.13;
 
             if (pos.y * next.y < 0.0) {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
               float hr = length(hit.xz);
 
-              if (hr < 1.55) {
-                // Photon ring / inner edge, but don't kill the whole ray immediately
-                float ring = exp(-pow((hr - 1.48) * 18.0, 2.0));
-                col += vec3(1.0, 0.94, 0.78) * ring * 0.45 * (1.0 - alpha);
-                alpha = max(alpha, 0.35 + ring * 0.4);
-                if (hr < 1.2) {
+              if (hr < 1.65) {
+                float ring = exp(-pow((hr - 1.52) * 16.0, 2.0));
+                col += vec3(1.0, 0.92, 0.75) * ring * 0.55 * (1.0 - alpha);
+                alpha = max(alpha, 0.4 + ring * 0.45);
+                if (hr < 1.25) {
                   alpha = 1.0;
                   break;
                 }
               } else {
                 vec3 dc = diskColor(hit, vel);
-                float a = clamp(length(dc) * 0.48, 0.0, 0.75);
+                float a = clamp(length(dc) * 0.55, 0.0, 0.82);
                 col += (1.0 - alpha) * dc;
                 alpha += (1.0 - alpha) * a;
-                if (alpha > 0.92) break;
+                if (alpha > 0.95) break;
               }
             }
 
             pos = next;
-            if (r > 28.0) break;
+            if (r > 25.0) break;
           }
 
-          vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 48.0;
-          vec3 starCol = sampleStars(suv, 0.875);
-          starCol += sampleStars(suv * 1.8 + 5.5, 0.925) * 0.48;
-
-          float edgeDist = length(uv);
-          float edgeFade = smoothstep(1.55, 0.5, edgeDist);
-          starCol *= mix(0.4, 1.0, edgeFade);
-
-          float outside = step(1.55, minR) * (1.0 - alpha);
-          col += starCol * outside * 1.15;
-          float a = max(alpha, smoothstep(0.01, 0.12, length(col)));
-          a = max(a, outside * smoothstep(0.004, 0.04, length(starCol)));
-
-          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.005, 0.06, length(starCol))));
+          float a = max(alpha, smoothstep(0.008, 0.08, length(col)));
+          gl_FragColor = vec4(col, a);
         }
       `,
     })
