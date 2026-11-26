@@ -72,60 +72,56 @@ export default function AsciiBlackHole() {
           float outer = 8.0;
           if (r < 1.55 || r > outer) return vec3(0.0);
 
-          // Continuous angle (avoid branch cut on negative X)
-          float ang = atan(hit.z, hit.x);
-          // Offset so discontinuity is less visible / we blend across it
-          float angNorm = ang / 6.28318;
           float safeR = max(r, 0.2);
 
-          // Mild differential rotation
-          float omega = 2.4 / pow(safeR, 1.3);
-          float turns = uTime * omega * 0.15; // slower overall
-          float p1 = fract(turns);
-          float p2 = fract(turns + 0.5);
-          // Smoother crossfade weight
-          float w = smoothstep(0.0, 0.5, abs(p1 - 0.5)) * 2.0;
-          w = clamp(w, 0.0, 1.0);
+          // Continuous rotation without atan branch cut
+          float omega = 2.2 / pow(safeR, 1.25);
+          float turns = uTime * omega * 0.12;
+          float phase = turns * 6.28318;
+
+          // Rotate the hit point continuously (no discontinuity)
+          float c = cos(phase);
+          float s = sin(phase);
+          vec2 rotated = vec2(
+            hit.x * c - hit.z * s,
+            hit.x * s + hit.z * c
+          );
 
           float farSide = smoothstep(-0.3, 2.0, hit.z);
 
-          // Spiral with continuous phase (sin is naturally continuous)
-          float spiral = sin((ang - turns * 6.28318) * 1.2 + log(safeR) * 1.6) * 0.5 + 0.5;
+          // Spiral in the rotating frame
+          float spiral = sin(length(rotated) * 0.35 + phase * 0.4) * 0.5 + 0.5;
 
-          // Noise UVs — use continuous turns instead of fract for main motion
-          float rCoord = safeR * 0.36;
-          vec2 uvA = vec2(angNorm - turns * 0.65, rCoord);
-          vec2 uvB = vec2(angNorm - (turns + 0.5) * 0.65, rCoord);
+          // Noise in rotating Cartesian-like coords — no angular seam
+          float rCoord = safeR * 0.34;
+          vec2 uvN = rotated * 0.22 + vec2(rCoord, rCoord * 0.6);
 
-          float turb = mix(fbm(uvA * 2.4), fbm(uvB * 2.4), w);
-          float fine = mix(fbm(uvA * 4.2 + 2.0), fbm(uvB * 4.2 + 2.0), w);
-          fine = mix(fine, turb, farSide * 0.65);
+          float turb = fbm(uvN * 2.2);
+          float fine = fbm(uvN * 3.8 + 1.7);
+          fine = mix(fine, turb, farSide * 0.6);
 
-          float clumps = mix(
-            pow(noise(uvA * 3.4), 1.8),
-            pow(noise(uvB * 3.4), 1.8),
-            w
-          );
-          clumps *= mix(1.0, 0.45, farSide);
+          float clumps = pow(noise(uvN * 2.8), 1.6);
+          clumps *= mix(1.0, 0.5, farSide);
 
-          float flow = spiral * 0.25 + turb * 0.45 + fine * 0.1 + clumps * 0.15;
+          float flow = spiral * 0.22 + turb * 0.5 + fine * 0.12 + clumps * 0.16;
           flow = clamp(flow, 0.0, 1.0);
 
           float t = smoothstep(outer, 1.8, r);
-          vec3 hot = vec3(1.0, 0.88, 0.5);
-          vec3 mid = vec3(1.0, 0.38, 0.06);
-          vec3 cool = vec3(0.55, 0.04, 0.01);
-          vec3 col = mix(cool, mid, smoothstep(0.0, 0.45, t));
-          col = mix(col, hot, smoothstep(0.45, 1.0, t));
+          vec3 hot = vec3(1.0, 0.9, 0.55);
+          vec3 mid = vec3(1.0, 0.42, 0.07);
+          vec3 cool = vec3(0.6, 0.05, 0.012);
+          vec3 col = mix(cool, mid, smoothstep(0.0, 0.4, t));
+          col = mix(col, hot, smoothstep(0.4, 1.0, t));
 
           vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
           float beta = 0.5 / sqrt(safeR);
           float doppler = 1.0 + 0.85 * beta * dot(tangent, -rayDir);
-          doppler = clamp(doppler, 0.65, 1.6);
+          doppler = clamp(doppler, 0.7, 1.5);
 
-          float intensity = (0.25 + flow * 1.05) * doppler;
-          intensity *= smoothstep(1.55, 2.05, r) * smoothstep(outer, outer * 0.82, r);
-          intensity *= 1.0 + 1.4 * smoothstep(3.2, 1.7, r);
+          // Higher base density — less transparent, more saturated
+          float intensity = (0.45 + flow * 1.35) * doppler;
+          intensity *= smoothstep(1.55, 2.0, r) * smoothstep(outer, outer * 0.78, r);
+          intensity *= 1.0 + 1.6 * smoothstep(3.0, 1.65, r);
 
           return col * intensity;
         }
@@ -170,17 +166,18 @@ export default function AsciiBlackHole() {
               }
 
               vec3 dc = diskColor(hit, vel);
-              float a = clamp(length(dc) * 0.5, 0.0, 0.82);
+              // Higher opacity — denser material, less see-through
+              float a = clamp(length(dc) * 0.75, 0.0, 0.92);
               col += (1.0 - alpha) * dc;
               alpha += (1.0 - alpha) * a;
-              if (alpha > 0.94) break;
+              if (alpha > 0.96) break;
             }
 
             pos = next;
             if (r > 30.0) break;
           }
 
-          float a = max(alpha, smoothstep(0.01, 0.1, length(col)));
+          float a = max(alpha, smoothstep(0.02, 0.12, length(col)));
           gl_FragColor = vec4(col, a);
         }
       `,
