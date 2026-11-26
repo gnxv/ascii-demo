@@ -49,40 +49,21 @@ export default function ThreeFishSchool() {
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
-    scene.add(new THREE.AmbientLight(0x0a1520, 0.3))
+    scene.add(new THREE.AmbientLight(0x0a1520, 0.35))
+    const dirLight = new THREE.DirectionalLight(0x88ccff, 0.4)
+    dirLight.position.set(2, 4, 6)
+    scene.add(dirLight)
 
-    function createFishShape() {
-      const s = new THREE.Shape()
-      // Great Pyramid side view proportions (base:height ≈ 230.4:146.5 ≈ 1.573)
-      // Height = 1.1, base ≈ 1.73
-      const h = 0.55
-      const base = 1.1 * 1.573
-      const noseX = base * 0.5
-      const baseX = -base * 0.5
-      s.moveTo(noseX, 0)
-      s.lineTo(baseX, h)
-      s.lineTo(baseX, -h)
-      s.closePath()
-      return s
-    }
+    // Body = triangular pyramid (tetrahedron), elongated along X
+    const bodyGeo = new THREE.TetrahedronGeometry(0.72, 0)
+    bodyGeo.scale(1.55, 0.85, 0.7) // longer, flatter fish body
 
-    function createTailShape() {
-      const s = new THREE.Shape()
-      // Same pyramid ratio, smaller
-      const h = 0.42
-      const base = 0.84 * 1.573
-      const attachX = -0.15
-      const tipX = attachX - base
-      s.moveTo(attachX, 0)
-      s.lineTo(tipX, h)
-      s.lineTo(tipX, -h)
-      s.closePath()
-      return s
-    }
+    // Tail = smaller pyramid, attached behind
+    const tailGeo = new THREE.TetrahedronGeometry(0.48, 0)
+    tailGeo.scale(1.1, 0.9, 0.65)
+    tailGeo.translate(-0.95, 0, 0) // shift behind body
 
-    const bodyGeo = new THREE.ShapeGeometry(createFishShape(), 1)
-    const tailGeo = new THREE.ShapeGeometry(createTailShape(), 1)
-    const eyeGeo = new THREE.CircleGeometry(0.065, 8)
+    const eyeGeo = new THREE.SphereGeometry(0.055, 6, 5)
 
     const neonMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
@@ -96,6 +77,7 @@ export default function ThreeFishSchool() {
         varying float vPhase;
         varying float vAlong;
         varying float vSide;
+        varying vec3 vNormal;
 
         void main() {
           vec3 pos = position;
@@ -104,11 +86,13 @@ export default function ThreeFishSchool() {
           vSide = position.y;
           vHue = aHue;
           vPhase = aPhase;
+          vNormal = normal;
 
-          // Simple fish tail wave
-          float tailFactor = smoothstep(0.1, -0.8, along);
-          float wave = sin(along * 4.0 + uTime * 5.0 + aPhase) * 0.22 * tailFactor;
+          // Tail wave (more on the rear)
+          float tailFactor = smoothstep(0.4, -1.2, along);
+          float wave = sin(along * 3.5 + uTime * 4.8 + aPhase) * 0.18 * tailFactor;
           pos.y += wave;
+          pos.z += wave * 0.35;
 
           vec4 mv = modelViewMatrix * instanceMatrix * vec4(pos * aSize, 1.0);
           gl_Position = projectionMatrix * mv;
@@ -120,6 +104,7 @@ export default function ThreeFishSchool() {
         varying float vPhase;
         varying float vAlong;
         varying float vSide;
+        varying vec3 vNormal;
 
         vec3 hsl2rgb(float h, float s, float l) {
           float c = (1.0 - abs(2.0 * l - 1.0)) * s;
@@ -134,16 +119,17 @@ export default function ThreeFishSchool() {
         }
 
         void main() {
-          vec3 core = hsl2rgb(vHue, 1.0, 0.65);
-          float body = smoothstep(0.55, 0.15, abs(vSide));
-          body *= smoothstep(1.4, 0.3, abs(vAlong));
+          vec3 core = hsl2rgb(vHue, 1.0, 0.68);
+          float body = smoothstep(1.1, 0.2, abs(vAlong));
           float outline = 0.0;
-          outline += smoothstep(0.42, 0.5, abs(vSide)) * 0.8;
-          outline += smoothstep(1.15, 1.35, abs(vAlong)) * 0.6;
-          float tail = smoothstep(-0.6, -1.3, vAlong);
-          float pulse = 0.82 + 0.18 * sin(uTime * 2.4 + vPhase);
-          vec3 col = core * (body * 0.55 + outline * 1.1 + tail * 0.3) * pulse;
-          float alpha = clamp(body * 0.7 + outline * 0.95 + tail * 0.4, 0.0, 1.0);
+          outline += smoothstep(0.7, 0.95, abs(vSide)) * 0.7;
+          outline += smoothstep(1.0, 1.3, abs(vAlong)) * 0.5;
+          float tail = smoothstep(0.2, -1.1, vAlong);
+          float pulse = 0.8 + 0.2 * sin(uTime * 2.2 + vPhase);
+          // Simple face shading
+          float shade = 0.65 + 0.35 * abs(vNormal.y);
+          vec3 col = core * (body * 0.6 + outline * 1.0 + tail * 0.25) * pulse * shade;
+          float alpha = clamp(body * 0.85 + outline * 0.9 + tail * 0.35, 0.0, 1.0);
           gl_FragColor = vec4(col, alpha);
         }
       `,
@@ -156,7 +142,7 @@ export default function ThreeFishSchool() {
     const eyeMat = new THREE.MeshBasicMaterial({
       color: 0x001122,
       transparent: true,
-      opacity: 0.85,
+      opacity: 0.9,
     })
 
     const FISH_COUNT = 28
@@ -178,7 +164,7 @@ export default function ThreeFishSchool() {
         velocity: vel,
         phase: Math.random() * Math.PI * 2,
         speed: 0.35 + Math.random() * 0.4,
-        size: 0.378 + Math.random() * 0.198, // -10%
+        size: 0.42 + Math.random() * 0.22,
         hue: 0.48 + Math.random() * 0.22,
         target: new THREE.Vector3(
           (Math.random() - 0.5) * 14,
@@ -221,8 +207,6 @@ export default function ThreeFishSchool() {
     const tailMesh = new THREE.InstancedMesh(tailGeo, neonMat, FISH_COUNT)
     tailMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     scene.add(tailMesh)
-    bodyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    scene.add(bodyMesh)
 
     const eyeMesh = new THREE.InstancedMesh(eyeGeo, eyeMat, FISH_COUNT)
     eyeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
@@ -247,13 +231,12 @@ export default function ThreeFishSchool() {
     let time = 0
     let animId: number
 
-    // Full natural aquarium physics
     const maxSpd = 0.42
     const maxF = 0.007
     const neighborDist = 2.6
     const separationDist = 1.3
     const damping = 0.992
-    const maxTurn = 0.045 // radians per frame approx via velocity blend
+    const maxTurn = 0.045
 
     const io = new IntersectionObserver(
       ([e]) => { visible.current = e.isIntersecting },
@@ -274,13 +257,11 @@ export default function ThreeFishSchool() {
       for (let i = 0; i < FISH_COUNT; i++) {
         const f = fishes[i]
 
-        // Smarter, longer trajectories + cooldown
         f.targetTimer -= 0.016
         f.cruiseTimer -= 0.016
         f.targetCooldown = Math.max(0, f.targetCooldown - 0.016)
 
         if (f.cruiseTimer <= 0) {
-          // Rare maneuvers
           f.maneuvering = Math.random() < 0.22
           f.cruiseTimer = f.maneuvering ? 0.7 + Math.random() * 1.0 : 3.5 + Math.random() * 5
         }
@@ -288,11 +269,9 @@ export default function ThreeFishSchool() {
         const canChangeTarget = f.targetCooldown <= 0 && (f.targetTimer <= 0 || f.position.distanceTo(f.target) < 1.6)
         if (canChangeTarget) {
           const dir = f.prevDir.clone()
-          // Prefer long forward targets
           const dist = 6 + Math.random() * 5
           let newTarget = f.position.clone().add(dir.multiplyScalar(dist))
 
-          // Sometimes zone or follow another fish loosely
           if (Math.random() < 0.25) {
             const zones = [
               new THREE.Vector3(-7, f.preferredY, 0),
@@ -310,7 +289,6 @@ export default function ThreeFishSchool() {
             }
           }
 
-          // Penalize sharp turns: if angle > ~90°, bias toward current dir
           const toNew = newTarget.clone().sub(f.position).normalize()
           if (f.prevDir.dot(toNew) < 0.15) {
             newTarget = f.position.clone().add(f.prevDir.clone().multiplyScalar(5 + Math.random() * 3))
@@ -338,14 +316,12 @@ export default function ThreeFishSchool() {
             if (d < separationDist) {
               const diff = f.position.clone().sub(o.position).normalize().divideScalar(Math.max(d, 0.25))
               sep.add(diff)
-              // Side push when close laterally
               const toOther = o.position.clone().sub(f.position)
               const lateral = toOther.clone().cross(f.prevDir).cross(f.prevDir)
               if (lateral.lengthSq() > 0.01) {
                 sidePush.add(lateral.normalize().multiplyScalar(-0.4 / Math.max(d, 0.3)))
               }
             }
-            // Soft alignment only when comfortably spaced
             if (d > separationDist * 0.7) {
               ali.add(o.velocity)
             }
@@ -370,7 +346,6 @@ export default function ThreeFishSchool() {
           acc.add(ali)
         }
 
-        // Seek target (weaker when cruising straight)
         const toTarget = f.target.clone().sub(f.position)
         if (toTarget.length() > 0.6) {
           const seekStrength = f.maneuvering ? 1.1 : 0.55
@@ -379,14 +354,12 @@ export default function ThreeFishSchool() {
           acc.add(toTarget)
         }
 
-        // Mouse scatter: sharp avoid close, slow down while fleeing
         let mouseFlee = 0
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
           const md = toM.length()
           const sens = f.mouseSensitivity
           if (md < 7.5 && md > 0.15) {
-            // Strength falls off with distance
             const strength = Math.pow(Math.max(0, 1 - md / 7.5), 1.4) * sens
             if (strength > 0.05) {
               const avoid = toM.normalize().multiplyScalar(maxSpd * strength * 1.8).sub(f.velocity)
@@ -397,21 +370,17 @@ export default function ThreeFishSchool() {
           }
         }
 
-        // Soft wall repulsion
         const wallForce = new THREE.Vector3()
         if (Math.abs(f.position.x) > 7.2) wallForce.x = -Math.sign(f.position.x) * 0.014
         if (Math.abs(f.position.y) > 3.6) wallForce.y = -Math.sign(f.position.y) * 0.011
         if (Math.abs(f.position.z) > 4.2) wallForce.z = -Math.sign(f.position.z) * 0.009
         acc.add(wallForce)
 
-        // Stronger vertical layer preference
         const yDiff = f.preferredY - f.position.y
         acc.y += yDiff * 0.0045
 
-        // Gentle centering
         acc.add(f.position.clone().multiplyScalar(-0.0005))
 
-        // Personality-based wander (stronger for high personality)
         const wanderAmp = 0.0015 + f.personality * 0.002
         acc.add(new THREE.Vector3(
           Math.sin(time * 0.6 + f.phase) * wanderAmp,
@@ -419,11 +388,9 @@ export default function ThreeFishSchool() {
           Math.cos(time * 0.5 + f.phase * 0.8) * wanderAmp * 0.7
         ))
 
-        // Apply + damping
         f.velocity.add(acc)
         f.velocity.multiplyScalar(damping)
 
-        // Strong body inertia — wider arcs, resists sharp turns
         const desiredDir = f.velocity.clone().normalize()
         const turnLerp = f.maneuvering ? 0.09 : 0.035
         const blended = f.prevDir.clone().lerp(desiredDir, turnLerp).normalize()
@@ -431,21 +398,17 @@ export default function ThreeFishSchool() {
         f.velocity.copy(blended).multiplyScalar(spd)
         f.prevDir.copy(blended)
 
-        // Situational speed + light breathing
         let targetSpeed = maxSpd * (0.62 + f.speed * 0.35)
         if (f.maneuvering) targetSpeed *= 1.28
-        // Slow down while fleeing the cursor
         if (mouseFlee > 0.1) {
           targetSpeed *= 1.0 - mouseFlee * 0.55
         }
         if (!f.maneuvering && count === 0) targetSpeed *= 0.78
-        // Breathing
         targetSpeed *= 1.0 + Math.sin(time * 0.9 + f.speedPhase) * 0.06
         f.velocity.clampLength(0.05, Math.max(0.08, targetSpeed))
 
         f.position.add(f.velocity.clone().multiplyScalar(0.18))
 
-        // Hard safety bounds
         if (Math.abs(f.position.x) > 9.8) f.velocity.x *= -0.4
         if (Math.abs(f.position.y) > 5.0) f.velocity.y *= -0.4
         if (Math.abs(f.position.z) > 5.8) f.velocity.z *= -0.4
@@ -458,14 +421,13 @@ export default function ThreeFishSchool() {
         bodyMesh.setMatrixAt(i, dummy.matrix)
         tailMesh.setMatrixAt(i, dummy.matrix)
 
-        // Eye: near the front, slightly above centerline so it reads as an eye
-        const eyeOffset = dir.clone().multiplyScalar(0.48 * f.size)
+        const eyeOffset = dir.clone().multiplyScalar(0.52 * f.size)
         const side = new THREE.Vector3(-dir.y, dir.x, 0).normalize()
-        eyeOffset.add(side.multiplyScalar(0.18 * f.size))
+        eyeOffset.add(side.multiplyScalar(0.16 * f.size))
         eyeDummy.position.copy(f.position).add(eyeOffset)
         eyeDummy.lookAt(f.position.clone().add(dir))
         eyeDummy.rotateY(Math.PI)
-        eyeDummy.scale.setScalar(f.size * 1.05)
+        eyeDummy.scale.setScalar(f.size * 1.1)
         eyeDummy.updateMatrix()
         eyeMesh.setMatrixAt(i, eyeDummy.matrix)
       }
