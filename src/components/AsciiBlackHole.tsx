@@ -61,7 +61,7 @@ export default function AsciiBlackHole() {
           float a = 0.5;
           for (int i = 0; i < 4; i++) {
             v += a * noise(p);
-            p *= 2.1;
+            p *= 2.05;
             a *= 0.5;
           }
           return v;
@@ -75,31 +75,36 @@ export default function AsciiBlackHole() {
           float ang = atan(hit.z, hit.x);
           float safeR = max(r, 0.2);
 
-          float omega = 3.4 / pow(safeR, 1.5);
+          // Slower differential rotation + milder spiral so patterns don't wind up and pile up
+          float omega = 2.6 / pow(safeR, 1.35);
           float turns = uTime * omega / 6.28318;
           float p1 = fract(turns);
           float p2 = fract(turns + 0.5);
           float w = abs(p1 - 0.5) * 2.0;
 
-          float farSide = smoothstep(-0.5, 2.5, hit.z);
+          float farSide = smoothstep(-0.4, 2.2, hit.z);
 
-          float spiral = sin((ang - p1 * 6.28318) * 2.0 + log(safeR) * 3.5) * 0.5 + 0.5;
+          // Fewer, looser arms
+          float spiral = sin((ang - p1 * 6.28318) * 1.4 + log(safeR) * 1.8) * 0.5 + 0.5;
 
-          float rCoord = safeR * 0.45;
-          vec2 uvA = vec2(ang / 6.28318 - p1, rCoord);
-          vec2 uvB = vec2(ang / 6.28318 - p2, rCoord);
-          float turb = mix(fbm(uvA * 3.0), fbm(uvB * 3.0), w);
-          float fine = mix(fbm(uvA * 6.0 + 4.0), fbm(uvB * 6.0 + 4.0), w);
-          fine = mix(fine, turb, farSide * 0.85);
+          // Noise mostly follows the rotation but with a slower secondary phase so it doesn't accumulate shear
+          float slowP = fract(uTime * 0.15);
+          float rCoord = safeR * 0.38;
+          vec2 uvA = vec2(ang / 6.28318 - p1 * 0.7 - slowP * 0.3, rCoord);
+          vec2 uvB = vec2(ang / 6.28318 - p2 * 0.7 - slowP * 0.3, rCoord);
+
+          float turb = mix(fbm(uvA * 2.6), fbm(uvB * 2.6), w);
+          float fine = mix(fbm(uvA * 4.8 + 3.0), fbm(uvB * 4.8 + 3.0), w);
+          fine = mix(fine, turb, farSide * 0.7);
 
           float clumps = mix(
-            pow(noise(uvA * 5.0), 2.2),
-            pow(noise(uvB * 5.0), 2.2),
+            pow(noise(uvA * 3.8), 2.0),
+            pow(noise(uvB * 3.8), 2.0),
             w
           );
-          clumps *= mix(1.0, 0.35, farSide);
+          clumps *= mix(1.0, 0.4, farSide);
 
-          float flow = spiral * 0.35 + turb * 0.4 + fine * 0.15 + clumps * 0.25;
+          float flow = spiral * 0.28 + turb * 0.42 + fine * 0.12 + clumps * 0.18;
           flow = clamp(flow, 0.0, 1.0);
 
           float t = smoothstep(outer, 1.8, r);
