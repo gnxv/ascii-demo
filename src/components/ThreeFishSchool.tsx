@@ -54,14 +54,17 @@ export default function ThreeFishSchool() {
     dirLight.position.set(2, 4, 6)
     scene.add(dirLight)
 
-    // Body = triangular pyramid (tetrahedron), elongated along X
-    const bodyGeo = new THREE.TetrahedronGeometry(0.72, 0)
-    bodyGeo.scale(1.55, 0.85, 0.7) // longer, flatter fish body
+    // Body: large tetrahedron, apex points forward (+X = head)
+    const bodyGeo = new THREE.TetrahedronGeometry(0.78, 0)
+    bodyGeo.rotateZ(Math.PI / 2)          // tip was up, now points +X
+    bodyGeo.rotateY(Math.PI)              // flip so tip is truly forward
+    bodyGeo.scale(1.45, 0.82, 0.72)       // elongate along X
 
-    // Tail = smaller pyramid, attached behind
-    const tailGeo = new THREE.TetrahedronGeometry(0.48, 0)
-    tailGeo.scale(1.1, 0.9, 0.65)
-    tailGeo.translate(-0.95, 0, 0) // shift behind body
+    // Tail: smaller tetrahedron, apex touches the rear of the body
+    const tailGeo = new THREE.TetrahedronGeometry(0.42, 0)
+    tailGeo.rotateZ(-Math.PI / 2)         // tip points backward (-X)
+    tailGeo.scale(1.05, 0.78, 0.62)
+    tailGeo.translate(-1.05, 0, 0)        // move so tip meets body rear
 
     const eyeGeo = new THREE.SphereGeometry(0.055, 6, 5)
 
@@ -421,7 +424,7 @@ export default function ThreeFishSchool() {
         bodyMesh.setMatrixAt(i, dummy.matrix)
         tailMesh.setMatrixAt(i, dummy.matrix)
 
-        const eyeOffset = dir.clone().multiplyScalar(0.52 * f.size)
+        const eyeOffset = dir.clone().multiplyScalar(0.62 * f.size)
         const side = new THREE.Vector3(-dir.y, dir.x, 0).normalize()
         eyeOffset.add(side.multiplyScalar(0.16 * f.size))
         eyeDummy.position.copy(f.position).add(eyeOffset)
