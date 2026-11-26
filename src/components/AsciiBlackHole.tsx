@@ -59,7 +59,7 @@ export default function AsciiBlackHole() {
         // Spread far behind the hole
         positions[i * 3] = (Math.random() - 0.5) * spread
         positions[i * 3 + 1] = (Math.random() - 0.5) * spread * 0.5
-        positions[i * 3 + 2] = -25 - Math.random() * spread * 0.6  // far back
+        positions[i * 3 + 2] = 30 + Math.random() * spread * 0.7  // far behind the hole
 
         phases[i] = Math.random() * Math.PI * 2
         freqs[i] = 0.6 + Math.random() * 2.0
