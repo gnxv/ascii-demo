@@ -136,13 +136,14 @@ export default function AsciiBlackHole() {
                 );
                 vec2 local = fr - vec2(float(i), float(j)) - jitter;
                 float d = length(local);
-                float size = mix(110.0, 260.0, hash(cell + 5.0));
+                // Much sharper / smaller stars
+                float size = mix(280.0, 520.0, hash(cell + 5.0));
                 float s = exp(-d * d * size);
                 float huePick = hash(cell + 9.0);
                 vec3 c = mix(vec3(1.0, 0.85, 0.65), vec3(0.7, 0.85, 1.0), step(0.5, huePick));
                 if (huePick > 0.75) c = vec3(1.0, 0.98, 0.92);
-                float tw = 0.75 + 0.25 * sin(uTime * (1.5 + hash(cell)*2.0) + hash(cell)*6.28);
-                starCol += c * s * (0.3 + h * 0.9) * tw;
+                float tw = 0.78 + 0.22 * sin(uTime * (1.4 + hash(cell)*1.8) + hash(cell)*6.28);
+                starCol += c * s * (0.25 + h * 0.75) * tw;
               }
             }
           }
@@ -150,7 +151,7 @@ export default function AsciiBlackHole() {
         }
 
         void main() {
-          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.1;
+          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.0;
 
           vec3 ro = vec3(0.0, 1.15, -14.0);
           vec3 rd = normalize(vec3(uv.x, uv.y - 0.05, 1.0));
@@ -178,12 +179,12 @@ export default function AsciiBlackHole() {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
               float hr = length(hit.xz);
-              if (hr < 1.7 && hit.z < 0.3) {
-                float edge = smoothstep(1.05, 1.55, hr);
-                float ring = exp(-pow((hr - 1.5) * 9.0, 2.0));
-                col += vec3(1.0, 0.92, 0.75) * ring * 0.7;
-                col *= edge;
+              // Cleaner black hole + thin stable photon ring (no flickering partial strip)
+              if (hr < 1.55) {
                 alpha = 1.0;
+                // subtle thin ring only near the edge, stable
+                float ring = exp(-pow((hr - 1.48) * 18.0, 2.0));
+                col += vec3(1.0, 0.95, 0.8) * ring * 0.45;
                 break;
               }
               vec3 dc = diskColor(hit, vel);
@@ -198,21 +199,21 @@ export default function AsciiBlackHole() {
           }
 
           vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 48.0;
-          vec3 starCol = sampleStars(suv, 0.88);
-          starCol += sampleStars(suv * 1.9 + 7.0, 0.93) * 0.5;
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 62.0;
+          vec3 starCol = sampleStars(suv, 0.90);
+          starCol += sampleStars(suv * 2.1 + 11.0, 0.945) * 0.45;
 
-          // Reduce apparent size/brightness toward screen edges so they don't feel closer
+          // Stronger edge attenuation so periphery stars stay small and don't feel closer
           float edgeDist = length(uv);
-          float edgeFade = smoothstep(1.4, 0.6, edgeDist);
-          starCol *= mix(0.55, 1.0, edgeFade);
+          float edgeFade = smoothstep(1.6, 0.45, edgeDist);
+          starCol *= mix(0.35, 1.0, edgeFade);
 
           float outside = step(1.5, minR) * (1.0 - alpha);
-          col += starCol * outside * 1.3;
-          float a = max(alpha, smoothstep(0.012, 0.12, length(col)));
-          a = max(a, outside * smoothstep(0.006, 0.05, length(starCol)));
+          col += starCol * outside * 1.15;
+          float a = max(alpha, smoothstep(0.01, 0.1, length(col)));
+          a = max(a, outside * smoothstep(0.004, 0.04, length(starCol)));
 
-          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.008, 0.07, length(starCol))));
+          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.005, 0.06, length(starCol))));
         }
       `,
     })
