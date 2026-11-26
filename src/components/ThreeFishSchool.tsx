@@ -421,11 +421,15 @@ export default function ThreeFishSchool() {
         f.velocity.add(acc)
         f.velocity.multiplyScalar(damping)
 
-        // Measure turn rate for banking + speed + tail
+        // Measure turn rate BEFORE blending direction
         const desiredDir = f.velocity.clone().normalize()
         const turnAngle = Math.acos(Math.max(-1, Math.min(1, f.prevDir.dot(desiredDir))))
-        f.turnRate = THREE.MathUtils.lerp(f.turnRate, Math.min(1, turnAngle * 4.5), 0.15)
+        f.turnRate = THREE.MathUtils.lerp(f.turnRate, Math.min(1, turnAngle * 4.2), 0.12)
         turnA[i] = f.turnRate
+
+        // Sign of bank from the cross product of old direction and new desired
+        const turnCrossY = f.prevDir.clone().cross(desiredDir).y
+        const bankSign = Math.sign(turnCrossY) || 0
 
         const turnLerp = f.maneuvering ? 0.1 : (f.type === 'lazy' ? 0.025 : 0.04)
         const blended = f.prevDir.clone().lerp(desiredDir, turnLerp).normalize()
@@ -448,16 +452,16 @@ export default function ThreeFishSchool() {
         f.position.add(f.velocity.clone().multiplyScalar(0.18))
 
         // Soft safety only
-        if (Math.abs(f.position.x) > 10.2) f.velocity.x *= -0.25
-        if (Math.abs(f.position.y) > 5.4) f.velocity.y *= -0.25
-        if (Math.abs(f.position.z) > 6.2) f.velocity.z *= -0.25
+        if (Math.abs(f.position.x) > 10.5) f.velocity.x *= -0.15
+        if (Math.abs(f.position.y) > 5.6) f.velocity.y *= -0.15
+        if (Math.abs(f.position.z) > 6.4) f.velocity.z *= -0.15
 
         const dir = f.velocity.clone().normalize()
         dummy.position.copy(f.position)
         dummy.lookAt(f.position.clone().add(dir))
         dummy.rotateY(Math.PI)
-        // Banking: roll around forward axis based on turn
-        const bank = f.turnRate * 0.55 * Math.sign(f.prevDir.clone().cross(desiredDir).y || 1)
+        // Banking around local X (forward) using the pre-blend turn sign
+        const bank = f.turnRate * 0.48 * bankSign
         dummy.rotateX(bank)
         dummy.updateMatrix()
         bodyMesh.setMatrixAt(i, dummy.matrix)
