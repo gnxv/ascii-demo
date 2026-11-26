@@ -69,7 +69,7 @@ export default function AsciiBlackHole() {
 
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
-          float outer = 9.5;
+          float outer = 9.0;
           if (r < 1.5 || r > outer) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
@@ -110,9 +110,9 @@ export default function AsciiBlackHole() {
           float doppler = 1.0 + 0.85 * beta * dot(tangent, -rayDir);
           doppler = clamp(doppler, 0.65, 1.6);
 
-          float intensity = (0.28 + flow * 1.05) * doppler;
-          intensity *= smoothstep(1.5, 2.05, r) * smoothstep(outer, outer * 0.78, r);
-          intensity *= 1.0 + 1.35 * smoothstep(3.3, 1.7, r);
+          float intensity = (0.27 + flow * 1.05) * doppler;
+          intensity *= smoothstep(1.5, 2.05, r) * smoothstep(outer, outer * 0.8, r);
+          intensity *= 1.0 + 1.35 * smoothstep(3.3, 1.72, r);
 
           return col * intensity;
         }
@@ -146,11 +146,11 @@ export default function AsciiBlackHole() {
         }
 
         void main() {
-          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 1.9;
+          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.05;
 
-          // Raised camera for better view of both near and far sides of the disk
-          vec3 ro = vec3(0.0, 3.2, -12.0);
-          vec3 rd = normalize(vec3(uv.x * 0.85, uv.y * 0.7 - 0.15, 1.0));
+          // Moderate height: better far-side visibility without extreme top-down
+          vec3 ro = vec3(0.0, 1.9, -13.5);
+          vec3 rd = normalize(vec3(uv.x, uv.y - 0.08, 1.0));
 
           vec3 col = vec3(0.0);
           float alpha = 0.0;
@@ -158,39 +158,27 @@ export default function AsciiBlackHole() {
 
           vec3 pos = ro;
           vec3 vel = rd;
-          const int STEPS = 90;
+          const int STEPS = 80;
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
             minR = min(minR, r);
             if (r < 1.05) break;
 
-            vec3 acc = -2.15 * pos / pow(r, 4.0);
-            vel += acc * 0.3;
+            vec3 acc = -2.2 * pos / pow(r, 4.0);
+            vel += acc * 0.34;
             vel = normalize(vel) * length(rd);
 
-            vec3 next = pos + vel * 0.19;
+            vec3 next = pos + vel * 0.21;
 
-            // Plane crossing or close approach (hybrid thickness)
-            bool hitPlane = (pos.y * next.y < 0.0);
-            float closeY = min(abs(pos.y), abs(next.y));
-            bool closeEnough = closeY < 0.18 && length(pos.xz) > 1.4 && length(pos.xz) < 10.0;
-
-            if (hitPlane || closeEnough) {
-              vec3 hit;
-              if (hitPlane) {
-                float t = pos.y / (pos.y - next.y);
-                hit = mix(pos, next, t);
-              } else {
-                hit = pos;
-                hit.y = 0.0;
-              }
-
+            if (pos.y * next.y < 0.0) {
+              float t = pos.y / (pos.y - next.y);
+              vec3 hit = mix(pos, next, t);
               float hr = length(hit.xz);
 
-              if (hr < 1.48) {
+              if (hr < 1.5) {
                 alpha = 1.0;
-                float ring = exp(-pow((hr - 1.45) * 16.0, 2.0));
+                float ring = exp(-pow((hr - 1.47) * 15.0, 2.0));
                 col += vec3(1.0, 0.94, 0.78) * ring * 0.5;
                 break;
               }
@@ -199,28 +187,28 @@ export default function AsciiBlackHole() {
               float a = clamp(length(dc) * 0.5, 0.0, 0.82);
               col += (1.0 - alpha) * dc;
               alpha += (1.0 - alpha) * a;
-              if (alpha > 0.93) break;
+              if (alpha > 0.94) break;
             }
 
             pos = next;
-            if (r > 34.0) break;
+            if (r > 30.0) break;
           }
 
           vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 48.0;
-          vec3 starCol = sampleStars(suv, 0.87);
-          starCol += sampleStars(suv * 1.75 + 4.0, 0.92) * 0.5;
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 50.0;
+          vec3 starCol = sampleStars(suv, 0.875);
+          starCol += sampleStars(suv * 1.8 + 5.5, 0.925) * 0.48;
 
           float edgeDist = length(uv);
-          float edgeFade = smoothstep(1.5, 0.5, edgeDist);
-          starCol *= mix(0.45, 1.0, edgeFade);
+          float edgeFade = smoothstep(1.55, 0.5, edgeDist);
+          starCol *= mix(0.4, 1.0, edgeFade);
 
           float outside = step(1.5, minR) * (1.0 - alpha);
-          col += starCol * outside * 1.15;
-          float a = max(alpha, smoothstep(0.01, 0.11, length(col)));
-          a = max(a, outside * smoothstep(0.004, 0.035, length(starCol)));
+          col += starCol * outside * 1.2;
+          float a = max(alpha, smoothstep(0.01, 0.12, length(col)));
+          a = max(a, outside * smoothstep(0.004, 0.04, length(starCol)));
 
-          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.005, 0.055, length(starCol))));
+          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.005, 0.06, length(starCol))));
         }
       `,
     })
