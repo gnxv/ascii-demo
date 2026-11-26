@@ -14,31 +14,138 @@ export default function AsciiBlackHole() {
     const scene = new THREE.Scene()
     scene.background = new THREE.Color(0x000000)
 
-    const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1)
+    const camera = new THREE.PerspectiveCamera(
+      42,
+      container.clientWidth / Math.max(container.clientHeight, 1),
+      0.1,
+      400
+    )
+    camera.position.set(0, 1.2, -18)
+    camera.lookAt(0, 0, 0)
+
     const renderer = new THREE.WebGLRenderer({
       antialias: false,
       powerPreference: 'high-performance',
+      alpha: true,
     })
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 1.25))
     renderer.setSize(container.clientWidth, container.clientHeight)
     container.appendChild(renderer.domElement)
 
-    const geo = new THREE.PlaneGeometry(2, 2)
-    const mat = new THREE.ShaderMaterial({
+    // Soft dot texture for stars
+    const dot = document.createElement('canvas')
+    dot.width = dot.height = 64
+    const dctx = dot.getContext('2d')!
+    const g = dctx.createRadialGradient(32, 32, 0, 32, 32, 32)
+    g.addColorStop(0, 'rgba(255,255,255,1)')
+    g.addColorStop(0.25, 'rgba(255,255,255,0.9)')
+    g.addColorStop(0.6, 'rgba(255,255,255,0.3)')
+    g.addColorStop(1, 'rgba(255,255,255,0)')
+    dctx.fillStyle = g
+    dctx.fillRect(0, 0, 64, 64)
+    const dotTex = new THREE.CanvasTexture(dot)
+
+    const warm = new THREE.Color(0xffd0a8)
+    const cool = new THREE.Color(0xc0d8ff)
+    const white = new THREE.Color(0xfff8f0)
+
+    function makeStars(count: number, spread: number, baseSize: number, opacity: number) {
+      const positions = new Float32Array(count * 3)
+      const phases = new Float32Array(count)
+      const freqs = new Float32Array(count)
+      const colors = new Float32Array(count * 3)
+
+      for (let i = 0; i < count; i++) {
+        // Spread far behind the hole
+        positions[i * 3] = (Math.random() - 0.5) * spread
+        positions[i * 3 + 1] = (Math.random() - 0.5) * spread * 0.5
+        positions[i * 3 + 2] = -25 - Math.random() * spread * 0.6  // far back
+
+        phases[i] = Math.random() * Math.PI * 2
+        freqs[i] = 0.6 + Math.random() * 2.0
+
+        const pick = Math.random()
+        const c = pick < 0.25 ? warm : pick < 0.5 ? cool : white
+        colors[i * 3] = c.r
+        colors[i * 3 + 1] = c.g
+        colors[i * 3 + 2] = c.b
+      }
+
+      const geo = new THREE.BufferGeometry()
+      geo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+      geo.setAttribute('phase', new THREE.BufferAttribute(phases, 1))
+      geo.setAttribute('freq', new THREE.BufferAttribute(freqs, 1))
+      geo.setAttribute('starColor', new THREE.BufferAttribute(colors, 3))
+
+      const mat = new THREE.ShaderMaterial({
+        transparent: true,
+        depthWrite: false,
+        blending: THREE.AdditiveBlending,
+        uniforms: {
+          uTime: { value: 0 },
+          uSize: { value: baseSize },
+          uOpacity: { value: opacity },
+          uMap: { value: dotTex },
+        },
+        vertexShader: `
+          attribute float phase;
+          attribute float freq;
+          attribute vec3 starColor;
+          uniform float uTime;
+          uniform float uSize;
+          varying float vTwinkle;
+          varying vec3 vColor;
+          void main() {
+            vColor = starColor;
+            float a = sin(uTime * freq + phase);
+            float b = sin(uTime * freq * 1.7 + phase * 1.3);
+            vTwinkle = 0.8 + 0.2 * (a * 0.6 + b * 0.4);
+            vec4 mv = modelViewMatrix * vec4(position, 1.0);
+            gl_PointSize = uSize * (280.0 / max(-mv.z, 1.0));
+            gl_Position = projectionMatrix * mv;
+          }
+        `,
+        fragmentShader: `
+          uniform float uOpacity;
+          uniform sampler2D uMap;
+          varying float vTwinkle;
+          varying vec3 vColor;
+          void main() {
+            float a = texture2D(uMap, gl_PointCoord).a;
+            if (a < 0.05) discard;
+            gl_FragColor = vec4(vColor, a * uOpacity * vTwinkle);
+          }
+        `,
+      })
+
+      const points = new THREE.Points(geo, mat)
+      points.renderOrder = 0
+      scene.add(points)
+      return { geo, mat, points }
+    }
+
+    const starsFar = makeStars(600, 110, 1.6, 0.7)
+    const starsMid = makeStars(120, 70, 2.4, 0.85)
+    const starsBright = makeStars(22, 45, 3.6, 1.0)
+
+    // Full-screen black hole shader (transparent outside the disk)
+    const planeGeo = new THREE.PlaneGeometry(2, 2)
+    const holeMat = new THREE.ShaderMaterial({
       transparent: true,
       depthWrite: false,
+      depthTest: false,
       uniforms: {
         uTime: { value: 0 },
         uResolution: { value: new THREE.Vector2(container.clientWidth, container.clientHeight) },
       },
-      vertexShader: /* glsl */ `
+      vertexShader: `
         varying vec2 vUv;
         void main() {
           vUv = uv;
           gl_Position = vec4(position.xy, 0.0, 1.0);
         }
       `,
-      fragmentShader: /* glsl */ `
+      fragmentShader: `
         uniform float uTime;
         uniform vec2 uResolution;
         varying vec2 vUv;
@@ -121,113 +228,79 @@ export default function AsciiBlackHole() {
           return col * intensity;
         }
 
-        vec3 sampleStars(vec2 suv, float density) {
-          vec3 starCol = vec3(0.0);
-          vec2 base = floor(suv);
-          vec2 fr = fract(suv);
-          for (int j = -1; j <= 1; j++) {
-            for (int i = -1; i <= 1; i++) {
-              vec2 cell = base + vec2(float(i), float(j));
-              float h = hash(cell);
-              if (h > density) {
-                vec2 jitter = vec2(
-                  hash(cell + vec2(1.3, 2.7)),
-                  hash(cell + vec2(4.1, 0.9))
-                );
-                vec2 local = fr - vec2(float(i), float(j)) - jitter;
-                float d = length(local);
-                float size = mix(90.0, 220.0, hash(cell + 5.0)); // smaller points
-                float s = exp(-d * d * size);
-                float huePick = hash(cell + 9.0);
-                vec3 c = mix(vec3(1.0, 0.85, 0.65), vec3(0.7, 0.85, 1.0), step(0.5, huePick));
-                if (huePick > 0.75) c = vec3(1.0, 0.98, 0.92);
-                float tw = 0.75 + 0.25 * sin(uTime * (1.5 + hash(cell)*2.0) + hash(cell)*6.28);
-                starCol += c * s * (0.35 + h * 1.0) * tw;
-              }
-            }
-          }
-          return starCol;
-        }
-
         void main() {
-          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.2;
+          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.0;
 
-          vec3 ro = vec3(0.0, 1.15, -14.0);
-          vec3 rd = normalize(vec3(uv.x, uv.y - 0.05, 1.0));
+          vec3 ro = vec3(0.0, 1.1, -15.0);
+          vec3 rd = normalize(vec3(uv.x, uv.y - 0.04, 1.0));
 
           vec3 col = vec3(0.0);
           float alpha = 0.0;
-          float minR = 99.0;
 
           vec3 pos = ro;
           vec3 vel = rd;
-          const int STEPS = 80;
+          const int STEPS = 72;
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
-            minR = min(minR, r);
             if (r < 1.05) break;
 
-            vec3 acc = -2.2 * pos / pow(r, 4.0);
-            vel += acc * 0.35;
+            vec3 acc = -2.1 * pos / pow(r, 4.0);
+            vel += acc * 0.32;
             vel = normalize(vel) * length(rd);
 
-            vec3 next = pos + vel * 0.22;
+            vec3 next = pos + vel * 0.24;
 
             if (pos.y * next.y < 0.0) {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
               float hr = length(hit.xz);
-              if (hr < 1.7 && hit.z < 0.3) {
-                float edge = smoothstep(1.05, 1.55, hr);
-                float ring = exp(-pow((hr - 1.5) * 9.0, 2.0));
-                col += vec3(1.0, 0.92, 0.75) * ring * 0.7;
+              if (hr < 1.65 && hit.z < 0.4) {
+                float edge = smoothstep(1.05, 1.5, hr);
+                float ring = exp(-pow((hr - 1.48) * 10.0, 2.0));
+                col += vec3(1.0, 0.92, 0.75) * ring * 0.65;
                 col *= edge;
                 alpha = 1.0;
                 break;
               }
               vec3 dc = diskColor(hit, vel);
-              float a = clamp(length(dc) * 0.55, 0.0, 0.85);
+              float a = clamp(length(dc) * 0.5, 0.0, 0.8);
               col += (1.0 - alpha) * dc;
               alpha += (1.0 - alpha) * a;
-              if (alpha > 0.95) break;
+              if (alpha > 0.92) break;
             }
 
             pos = next;
-            if (r > 30.0) break;
+            if (r > 28.0) break;
           }
 
-          vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 42.0; // denser
-          vec3 starCol = sampleStars(suv, 0.86);
-          starCol += sampleStars(suv * 1.8 + 5.0, 0.91) * 0.55;
-
-          float outside = step(1.5, minR) * (1.0 - alpha);
-          col += starCol * outside * 1.4;
-          float a = max(alpha, smoothstep(0.015, 0.15, length(col)));
-          a = max(a, outside * smoothstep(0.008, 0.06, length(starCol)));
-
-          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.01, 0.08, length(starCol))));
+          // Transparent everywhere except the accretion disk and the hole itself
+          gl_FragColor = vec4(col, alpha);
         }
       `,
     })
 
-    const mesh = new THREE.Mesh(geo, mat)
-    scene.add(mesh)
+    const holeMesh = new THREE.Mesh(planeGeo, holeMat)
+    holeMesh.renderOrder = 10
+    scene.add(holeMesh)
 
     let time = 0
     let animId: number
 
     const io = new IntersectionObserver(
       ([e]) => { visible.current = e.isIntersecting },
-      { threshold: 0.02 }
+      { threshold: 0.01 }
     )
     io.observe(container)
+
     const animate = () => {
       animId = requestAnimationFrame(animate)
       if (!visible.current) return
       time += 0.016
-      mat.uniforms.uTime.value = time
+      holeMat.uniforms.uTime.value = time
+      starsFar.mat.uniforms.uTime.value = time
+      starsMid.mat.uniforms.uTime.value = time
+      starsBright.mat.uniforms.uTime.value = time
       renderer.render(scene, camera)
     }
     animate()
@@ -235,8 +308,11 @@ export default function AsciiBlackHole() {
     const onResize = () => {
       const w = container.clientWidth
       const h = container.clientHeight
+      if (w === 0 || h === 0) return
+      camera.aspect = w / h
+      camera.updateProjectionMatrix()
       renderer.setSize(w, h)
-      mat.uniforms.uResolution.value.set(w, h)
+      holeMat.uniforms.uResolution.value.set(w, h)
     }
     window.addEventListener('resize', onResize)
 
@@ -245,8 +321,11 @@ export default function AsciiBlackHole() {
       cancelAnimationFrame(animId)
       window.removeEventListener('resize', onResize)
       renderer.dispose()
-      geo.dispose()
-      mat.dispose()
+      planeGeo.dispose()
+      holeMat.dispose()
+      starsFar.geo.dispose(); starsFar.mat.dispose()
+      starsMid.geo.dispose(); starsMid.mat.dispose()
+      starsBright.geo.dispose(); starsBright.mat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
