@@ -70,7 +70,7 @@ export default function AsciiBlackHole() {
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
           float outer = 8.0;
-          if (r < 1.6 || r > outer) return vec3(0.0);
+          if (r < 1.55 || r > outer) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
           float safeR = max(r, 0.2);
@@ -115,7 +115,7 @@ export default function AsciiBlackHole() {
           doppler = clamp(doppler, 0.65, 1.6);
 
           float intensity = (0.25 + flow * 1.05) * doppler;
-          intensity *= smoothstep(1.6, 2.1, r) * smoothstep(outer, outer * 0.82, r);
+          intensity *= smoothstep(1.55, 2.05, r) * smoothstep(outer, outer * 0.82, r);
           intensity *= 1.0 + 1.4 * smoothstep(3.2, 1.7, r);
 
           return col * intensity;
@@ -136,7 +136,7 @@ export default function AsciiBlackHole() {
                 );
                 vec2 local = fr - vec2(float(i), float(j)) - jitter;
                 float d = length(local);
-                float size = mix(180.0, 380.0, hash(cell + 5.0));
+                float size = mix(160.0, 340.0, hash(cell + 5.0));
                 float s = exp(-d * d * size);
                 float huePick = hash(cell + 9.0);
                 vec3 c = mix(vec3(1.0, 0.85, 0.65), vec3(0.7, 0.85, 1.0), step(0.5, huePick));
@@ -178,19 +178,21 @@ export default function AsciiBlackHole() {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
               float hr = length(hit.xz);
-              if (hr < 1.7 && hit.z < 0.3) {
-                float edge = smoothstep(1.05, 1.55, hr);
-                float ring = exp(-pow((hr - 1.5) * 9.0, 2.0));
-                col += vec3(1.0, 0.92, 0.75) * ring * 0.7;
-                col *= edge;
+
+              // Full dark circle for the hole on both sides, thin stable ring
+              if (hr < 1.52) {
                 alpha = 1.0;
+                float ring = exp(-pow((hr - 1.48) * 14.0, 2.0));
+                col += vec3(1.0, 0.94, 0.78) * ring * 0.5;
                 break;
               }
+
+              // Disk on both near and far side
               vec3 dc = diskColor(hit, vel);
-              float a = clamp(length(dc) * 0.55, 0.0, 0.85);
+              float a = clamp(length(dc) * 0.5, 0.0, 0.82);
               col += (1.0 - alpha) * dc;
               alpha += (1.0 - alpha) * a;
-              if (alpha > 0.95) break;
+              if (alpha > 0.94) break;
             }
 
             pos = next;
@@ -198,20 +200,20 @@ export default function AsciiBlackHole() {
           }
 
           vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 52.0;
-          vec3 starCol = sampleStars(suv, 0.87);
-          starCol += sampleStars(suv * 1.85 + 6.0, 0.92) * 0.5;
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 50.0;
+          vec3 starCol = sampleStars(suv, 0.875);
+          starCol += sampleStars(suv * 1.8 + 5.5, 0.925) * 0.48;
 
           float edgeDist = length(uv);
-          float edgeFade = smoothstep(1.5, 0.55, edgeDist);
-          starCol *= mix(0.45, 1.0, edgeFade);
+          float edgeFade = smoothstep(1.55, 0.5, edgeDist);
+          starCol *= mix(0.4, 1.0, edgeFade);
 
           float outside = step(1.5, minR) * (1.0 - alpha);
-          col += starCol * outside * 1.25;
-          float a = max(alpha, smoothstep(0.012, 0.13, length(col)));
-          a = max(a, outside * smoothstep(0.005, 0.045, length(starCol)));
+          col += starCol * outside * 1.2;
+          float a = max(alpha, smoothstep(0.01, 0.12, length(col)));
+          a = max(a, outside * smoothstep(0.004, 0.04, length(starCol)));
 
-          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.006, 0.065, length(starCol))));
+          gl_FragColor = vec4(col, max(a, outside * smoothstep(0.005, 0.06, length(starCol))));
         }
       `,
     })
