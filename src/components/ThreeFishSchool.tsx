@@ -56,17 +56,15 @@ export default function ThreeFishSchool() {
 
     // Body: large tetrahedron, apex points forward (+X = head)
     const bodyGeo = new THREE.TetrahedronGeometry(0.78, 0)
-    bodyGeo.rotateZ(Math.PI / 2)          // tip was up, now points +X
-    bodyGeo.rotateY(Math.PI)              // flip so tip is truly forward
-    bodyGeo.scale(1.45, 0.82, 0.72)       // elongate along X
+    bodyGeo.rotateZ(Math.PI / 2)
+    bodyGeo.rotateY(Math.PI)
+    bodyGeo.scale(1.45, 0.82, 0.72)
 
     // Tail: smaller tetrahedron, apex touches the rear of the body
     const tailGeo = new THREE.TetrahedronGeometry(0.42, 0)
-    tailGeo.rotateZ(-Math.PI / 2)         // tip points backward (-X)
+    tailGeo.rotateZ(-Math.PI / 2)
     tailGeo.scale(1.05, 0.78, 0.62)
-    tailGeo.translate(-1.05, 0, 0)        // move so tip meets body rear
-
-    const eyeGeo = new THREE.SphereGeometry(0.055, 6, 5)
+    tailGeo.translate(-1.05, 0, 0)
 
     const neonMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
@@ -91,7 +89,6 @@ export default function ThreeFishSchool() {
           vPhase = aPhase;
           vNormal = normal;
 
-          // Tail wave (more on the rear)
           float tailFactor = smoothstep(0.4, -1.2, along);
           float wave = sin(along * 3.5 + uTime * 4.8 + aPhase) * 0.18 * tailFactor;
           pos.y += wave;
@@ -129,7 +126,6 @@ export default function ThreeFishSchool() {
           outline += smoothstep(1.0, 1.3, abs(vAlong)) * 0.5;
           float tail = smoothstep(0.2, -1.1, vAlong);
           float pulse = 0.8 + 0.2 * sin(uTime * 2.2 + vPhase);
-          // Simple face shading
           float shade = 0.65 + 0.35 * abs(vNormal.y);
           vec3 col = core * (body * 0.6 + outline * 1.0 + tail * 0.25) * pulse * shade;
           float alpha = clamp(body * 0.85 + outline * 0.9 + tail * 0.35, 0.0, 1.0);
@@ -140,12 +136,6 @@ export default function ThreeFishSchool() {
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,
-    })
-
-    const eyeMat = new THREE.MeshBasicMaterial({
-      color: 0x001122,
-      transparent: true,
-      opacity: 0.9,
     })
 
     const FISH_COUNT = 28
@@ -211,12 +201,7 @@ export default function ThreeFishSchool() {
     tailMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     scene.add(tailMesh)
 
-    const eyeMesh = new THREE.InstancedMesh(eyeGeo, eyeMat, FISH_COUNT)
-    eyeMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    scene.add(eyeMesh)
-
     const dummy = new THREE.Object3D()
-    const eyeDummy = new THREE.Object3D()
     const mouse = new THREE.Vector2(999, 999)
     const mouseWorld = new THREE.Vector3()
 
@@ -423,21 +408,10 @@ export default function ThreeFishSchool() {
         dummy.updateMatrix()
         bodyMesh.setMatrixAt(i, dummy.matrix)
         tailMesh.setMatrixAt(i, dummy.matrix)
-
-        const eyeOffset = dir.clone().multiplyScalar(0.62 * f.size)
-        const side = new THREE.Vector3(-dir.y, dir.x, 0).normalize()
-        eyeOffset.add(side.multiplyScalar(0.16 * f.size))
-        eyeDummy.position.copy(f.position).add(eyeOffset)
-        eyeDummy.lookAt(f.position.clone().add(dir))
-        eyeDummy.rotateY(Math.PI)
-        eyeDummy.scale.setScalar(f.size * 1.1)
-        eyeDummy.updateMatrix()
-        eyeMesh.setMatrixAt(i, eyeDummy.matrix)
       }
 
       bodyMesh.instanceMatrix.needsUpdate = true
       tailMesh.instanceMatrix.needsUpdate = true
-      eyeMesh.instanceMatrix.needsUpdate = true
 
       camera.position.x = Math.sin(time * 0.05) * 0.5
       camera.lookAt(0, 0, 0)
@@ -461,9 +435,7 @@ export default function ThreeFishSchool() {
       renderer.dispose()
       bodyGeo.dispose()
       tailGeo.dispose()
-      eyeGeo.dispose()
       neonMat.dispose()
-      eyeMat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
       }
