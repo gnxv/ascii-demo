@@ -69,21 +69,21 @@ export default function AsciiBlackHole() {
 
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
-          float outer = 8.5;
-          if (r < 1.6 || r > outer) return vec3(0.0);
+          float outer = 8.2;
+          if (r < 1.65 || r > outer) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
           float safeR = max(r, 0.2);
 
-          float omega = 3.2 / pow(safeR, 1.5);
+          float omega = 3.0 / pow(safeR, 1.5);
           float turns = uTime * omega / 6.28318;
           float p1 = fract(turns);
           float p2 = fract(turns + 0.5);
           float w = abs(p1 - 0.5) * 2.0;
 
-          float spiral = sin((ang - p1 * 6.28318) * 2.0 + log(safeR) * 3.2) * 0.5 + 0.5;
+          float spiral = sin((ang - p1 * 6.28318) * 2.0 + log(safeR) * 3.0) * 0.5 + 0.5;
 
-          float rCoord = safeR * 0.42;
+          float rCoord = safeR * 0.4;
           vec2 uvA = vec2(ang / 6.28318 - p1, rCoord);
           vec2 uvB = vec2(ang / 6.28318 - p2, rCoord);
           float turb = mix(fbm(uvA * 3.0), fbm(uvB * 3.0), w);
@@ -95,82 +95,84 @@ export default function AsciiBlackHole() {
             w
           );
 
-          float flow = spiral * 0.32 + turb * 0.42 + fine * 0.16 + clumps * 0.22;
+          float flow = spiral * 0.3 + turb * 0.45 + fine * 0.15 + clumps * 0.2;
           flow = clamp(flow, 0.0, 1.0);
 
-          float t = smoothstep(outer, 1.9, r);
-          vec3 hot = vec3(1.0, 0.86, 0.48);
-          vec3 mid = vec3(1.0, 0.36, 0.05);
-          vec3 cool = vec3(0.5, 0.035, 0.008);
-          vec3 col = mix(cool, mid, smoothstep(0.0, 0.4, t));
-          col = mix(col, hot, smoothstep(0.4, 1.0, t));
+          float t = smoothstep(outer, 1.95, r);
+          vec3 hot = vec3(1.0, 0.85, 0.45);
+          vec3 mid = vec3(1.0, 0.34, 0.04);
+          vec3 cool = vec3(0.48, 0.03, 0.006);
+          vec3 col = mix(cool, mid, smoothstep(0.0, 0.38, t));
+          col = mix(col, hot, smoothstep(0.38, 1.0, t));
 
           vec3 tangent = normalize(vec3(-hit.z, 0.0, hit.x));
-          float beta = 0.48 / sqrt(safeR);
-          float doppler = 1.0 + 0.8 * beta * dot(tangent, -rayDir);
-          doppler = clamp(doppler, 0.62, 1.55);
+          float beta = 0.45 / sqrt(safeR);
+          float doppler = 1.0 + 0.75 * beta * dot(tangent, -rayDir);
+          doppler = clamp(doppler, 0.6, 1.5);
 
-          float intensity = (0.25 + flow * 1.1) * doppler;
-          intensity *= smoothstep(1.6, 2.15, r) * smoothstep(outer, outer * 0.75, r);
-          intensity *= 1.0 + 1.4 * smoothstep(3.2, 1.75, r);
+          float intensity = (0.22 + flow * 1.15) * doppler;
+          intensity *= smoothstep(1.65, 2.2, r) * smoothstep(outer, outer * 0.7, r);
+          intensity *= 1.0 + 1.5 * smoothstep(3.0, 1.8, r);
 
           return col * intensity;
         }
 
         void main() {
-          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 1.85;
+          vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 1.7;
 
-          // Classic elevated side view — good disk geometry, both near and far side visible
-          vec3 ro = vec3(0.0, 2.8, -9.8);
-          vec3 rd = normalize(vec3(uv.x * 0.92, uv.y - 0.15, 1.0));
+          // Lower, more side-on view so far-side disk can bend under and be seen from below
+          vec3 ro = vec3(0.0, 1.65, -11.0);
+          vec3 rd = normalize(vec3(uv.x * 0.88, uv.y - 0.06, 1.0));
 
           vec3 col = vec3(0.0);
           float alpha = 0.0;
 
           vec3 pos = ro;
           vec3 vel = rd;
-          const int STEPS = 100;
+          const int STEPS = 130;
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
-            if (r < 1.1) {
+            if (r < 1.12) {
               alpha = 1.0;
               break;
             }
 
-            vec3 acc = -1.35 * pos / max(pow(r, 4.0), 0.08);
-            vel += acc * 0.22;
+            // Stronger bending so far-side disk wraps under the hole
+            vec3 acc = -1.85 * pos / max(pow(r, 4.0), 0.06);
+            vel += acc * 0.25;
             vel = normalize(vel) * length(rd);
 
-            vec3 next = pos + vel * 0.13;
+            vec3 next = pos + vel * 0.11;
 
             if (pos.y * next.y < 0.0) {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
               float hr = length(hit.xz);
 
-              if (hr < 1.65) {
-                float ring = exp(-pow((hr - 1.52) * 16.0, 2.0));
-                col += vec3(1.0, 0.92, 0.75) * ring * 0.55 * (1.0 - alpha);
-                alpha = max(alpha, 0.4 + ring * 0.45);
-                if (hr < 1.25) {
+              if (hr < 1.7) {
+                float ring = exp(-pow((hr - 1.55) * 14.0, 2.0));
+                col += vec3(1.0, 0.9, 0.7) * ring * 0.6 * (1.0 - alpha);
+                alpha = max(alpha, 0.3 + ring * 0.5);
+                if (hr < 1.28) {
                   alpha = 1.0;
                   break;
                 }
               } else {
                 vec3 dc = diskColor(hit, vel);
-                float a = clamp(length(dc) * 0.55, 0.0, 0.82);
+                float a = clamp(length(dc) * 0.5, 0.0, 0.78);
                 col += (1.0 - alpha) * dc;
                 alpha += (1.0 - alpha) * a;
-                if (alpha > 0.95) break;
+                // Don't break too early — allow second crossing for lensed far side
+                if (alpha > 0.97) break;
               }
             }
 
             pos = next;
-            if (r > 25.0) break;
+            if (r > 22.0) break;
           }
 
-          float a = max(alpha, smoothstep(0.008, 0.08, length(col)));
+          float a = max(alpha, smoothstep(0.006, 0.06, length(col)));
           gl_FragColor = vec4(col, a);
         }
       `,
