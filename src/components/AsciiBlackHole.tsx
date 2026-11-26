@@ -70,7 +70,7 @@ export default function AsciiBlackHole() {
         vec3 diskColor(vec3 hit, vec3 rayDir) {
           float r = length(hit.xz);
           float outer = 9.0;
-          if (r < 1.5 || r > outer) return vec3(0.0);
+          if (r < 1.55 || r > outer) return vec3(0.0);
 
           float ang = atan(hit.z, hit.x);
           float safeR = max(r, 0.2);
@@ -111,7 +111,7 @@ export default function AsciiBlackHole() {
           doppler = clamp(doppler, 0.65, 1.6);
 
           float intensity = (0.27 + flow * 1.05) * doppler;
-          intensity *= smoothstep(1.5, 2.05, r) * smoothstep(outer, outer * 0.8, r);
+          intensity *= smoothstep(1.55, 2.1, r) * smoothstep(outer, outer * 0.8, r);
           intensity *= 1.0 + 1.35 * smoothstep(3.3, 1.72, r);
 
           return col * intensity;
@@ -148,9 +148,9 @@ export default function AsciiBlackHole() {
         void main() {
           vec2 uv = (vUv - 0.5) * vec2(uResolution.x / uResolution.y, 1.0) * 2.05;
 
-          // Moderate height: better far-side visibility without extreme top-down
-          vec3 ro = vec3(0.0, 1.9, -13.5);
-          vec3 rd = normalize(vec3(uv.x, uv.y - 0.08, 1.0));
+          // Slightly higher camera for better lower-disk visibility + milder tilt
+          vec3 ro = vec3(0.0, 2.35, -12.2);
+          vec3 rd = normalize(vec3(uv.x, uv.y - 0.02, 1.0));
 
           vec3 col = vec3(0.0);
           float alpha = 0.0;
@@ -158,44 +158,49 @@ export default function AsciiBlackHole() {
 
           vec3 pos = ro;
           vec3 vel = rd;
-          const int STEPS = 80;
+          const int STEPS = 110;
 
           for (int i = 0; i < STEPS; i++) {
             float r = length(pos);
             minR = min(minR, r);
-            if (r < 1.05) break;
+            if (r < 1.08) break;
 
-            vec3 acc = -2.2 * pos / pow(r, 4.0);
-            vel += acc * 0.34;
+            // Softer gravity so lower rays still hit the disk instead of being swallowed
+            vec3 acc = -1.5 * pos / max(pow(r, 4.0), 0.05);
+            vel += acc * 0.26;
             vel = normalize(vel) * length(rd);
 
-            vec3 next = pos + vel * 0.21;
+            vec3 next = pos + vel * 0.14;
 
             if (pos.y * next.y < 0.0) {
               float t = pos.y / (pos.y - next.y);
               vec3 hit = mix(pos, next, t);
               float hr = length(hit.xz);
 
-              if (hr < 1.5) {
-                alpha = 1.0;
-                float ring = exp(-pow((hr - 1.47) * 15.0, 2.0));
-                col += vec3(1.0, 0.94, 0.78) * ring * 0.5;
-                break;
+              if (hr < 1.55) {
+                // Photon ring / inner edge, but don't kill the whole ray immediately
+                float ring = exp(-pow((hr - 1.48) * 18.0, 2.0));
+                col += vec3(1.0, 0.94, 0.78) * ring * 0.45 * (1.0 - alpha);
+                alpha = max(alpha, 0.35 + ring * 0.4);
+                if (hr < 1.2) {
+                  alpha = 1.0;
+                  break;
+                }
+              } else {
+                vec3 dc = diskColor(hit, vel);
+                float a = clamp(length(dc) * 0.48, 0.0, 0.75);
+                col += (1.0 - alpha) * dc;
+                alpha += (1.0 - alpha) * a;
+                if (alpha > 0.92) break;
               }
-
-              vec3 dc = diskColor(hit, vel);
-              float a = clamp(length(dc) * 0.5, 0.0, 0.82);
-              col += (1.0 - alpha) * dc;
-              alpha += (1.0 - alpha) * a;
-              if (alpha > 0.94) break;
             }
 
             pos = next;
-            if (r > 30.0) break;
+            if (r > 28.0) break;
           }
 
           vec3 dir = normalize(vel);
-          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 50.0;
+          vec2 suv = vec2(atan(dir.z, dir.x), asin(clamp(dir.y, -1.0, 1.0))) * 48.0;
           vec3 starCol = sampleStars(suv, 0.875);
           starCol += sampleStars(suv * 1.8 + 5.5, 0.925) * 0.48;
 
@@ -203,8 +208,8 @@ export default function AsciiBlackHole() {
           float edgeFade = smoothstep(1.55, 0.5, edgeDist);
           starCol *= mix(0.4, 1.0, edgeFade);
 
-          float outside = step(1.5, minR) * (1.0 - alpha);
-          col += starCol * outside * 1.2;
+          float outside = step(1.55, minR) * (1.0 - alpha);
+          col += starCol * outside * 1.15;
           float a = max(alpha, smoothstep(0.01, 0.12, length(col)));
           a = max(a, outside * smoothstep(0.004, 0.04, length(starCol)));
 
