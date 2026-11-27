@@ -62,23 +62,30 @@ export default function ThreeFishSchool() {
     dirLight.position.set(2, 4, 6)
     scene.add(dirLight)
 
-    // Body: elongated octahedron
+    // Body: elongated octahedron with side vertices shifted toward the head
     const bodyGeo = new THREE.OctahedronGeometry(0.85, 0)
     bodyGeo.rotateZ(Math.PI / 2)
+    {
+      const pos = bodyGeo.attributes.position
+      for (let i = 0; i < pos.count; i++) {
+        const x = pos.getX(i)
+        // Side (equatorial) vertices are near x ≈ 0; push them forward (positive X = head)
+        if (Math.abs(x) < 0.35) {
+          pos.setX(i, x + 0.42)
+        }
+      }
+      pos.needsUpdate = true
+      bodyGeo.computeVertexNormals()
+    }
     bodyGeo.scale(1.65, 0.72, 0.62)
 
-    // Tail: two triangles (slightly splayed)
-    const triShape = new THREE.Shape()
-    triShape.moveTo(0, 0)
-    triShape.lineTo(0.48, 0.32)
-    triShape.lineTo(0.15, -0.05)
-    triShape.closePath()
-    const tailGeoL = new THREE.ShapeGeometry(triShape)
-    tailGeoL.rotateY(Math.PI / 2)
-    tailGeoL.translate(-1.05, 0.08, 0)
+    // Tail: two small tetrahedrons
+    const tailGeoL = new THREE.TetrahedronGeometry(0.38, 0)
+    tailGeoL.rotateZ(-Math.PI / 2)
+    tailGeoL.scale(1.15, 0.75, 0.55)
+    tailGeoL.translate(-1.12, 0.12, 0)
     const tailGeoR = tailGeoL.clone()
-    tailGeoR.scale(1, -1, 1)
-    tailGeoR.translate(0, -0.16, 0)
+    tailGeoR.translate(0, -0.24, 0)
 
     const neonMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
