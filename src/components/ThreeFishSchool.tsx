@@ -25,6 +25,9 @@ type FishData = {
   type: FishType
   fearTimer: number
   turnRate: number
+  visualDir: THREE.Vector3
+  bank: number
+  visualQuat: THREE.Quaternion
 }
 
 export default function ThreeFishSchool() {
@@ -59,13 +62,11 @@ export default function ThreeFishSchool() {
     dirLight.position.set(2, 4, 6)
     scene.add(dirLight)
 
-    // Body: large tetrahedron, apex points forward (+X = head)
     const bodyGeo = new THREE.TetrahedronGeometry(0.78, 0)
     bodyGeo.rotateZ(Math.PI / 2)
     bodyGeo.rotateY(Math.PI)
     bodyGeo.scale(1.45, 0.82, 0.72)
 
-    // Tail: smaller tetrahedron, apex touches the rear of the body
     const tailGeo = new THREE.TetrahedronGeometry(0.42, 0)
     tailGeo.rotateZ(-Math.PI / 2)
     tailGeo.scale(1.05, 0.78, 0.62)
@@ -95,12 +96,11 @@ export default function ThreeFishSchool() {
           vPhase = aPhase;
           vNormal = normal;
 
-          // Tail wave stronger when turning
           float tailFactor = smoothstep(0.4, -1.2, along);
-          float amp = 0.12 + aTurn * 0.28;
+          float amp = 0.1 + aTurn * 0.22;
           float wave = sin(along * 3.5 + uTime * 4.8 + aPhase) * amp * tailFactor;
           pos.y += wave;
-          pos.z += wave * 0.4;
+          pos.z += wave * 0.35;
 
           vec4 mv = modelViewMatrix * instanceMatrix * vec4(pos * aSize, 1.0);
           gl_Position = projectionMatrix * mv;
@@ -162,6 +162,7 @@ export default function ThreeFishSchool() {
       )
       const r = Math.random()
       const type: FishType = r < 0.18 ? 'leader' : r < 0.72 ? 'schooler' : 'lazy'
+      const startDir = vel.clone().normalize()
       fishes.push({
         position: pos,
         velocity: vel,
@@ -175,7 +176,7 @@ export default function ThreeFishSchool() {
           (Math.random() - 0.5) * 5
         ),
         targetTimer: 2 + Math.random() * 4,
-        prevDir: vel.clone().normalize(),
+        prevDir: startDir.clone(),
         personality: Math.random(),
         preferredY: (Math.random() - 0.5) * 3.5,
         cruiseTimer: 1 + Math.random() * 3,
@@ -186,6 +187,17 @@ export default function ThreeFishSchool() {
         type,
         fearTimer: 0,
         turnRate: 0,
+        visualDir: startDir.clone(),
+        bank: 0,
+        visualQuat: (() => {
+          const q = new THREE.Quaternion()
+          const tmp = new THREE.Object3D()
+          tmp.lookAt(startDir)
+          tmp.rotateY(Math.PI)
+          tmp.updateMatrix()
+          q.setFromRotationMatrix(tmp.matrix)
+          return q
+        })(),
       })
     }
 
@@ -221,6 +233,7 @@ export default function ThreeFishSchool() {
     const dummy = new THREE.Object3D()
     const mouse = new THREE.Vector2(999, 999)
     const mouseWorld = new THREE.Vector3()
+    const worldUp = new THREE.Vector3(0, 1, 0)
 
     const onMove = (e: PointerEvent) => {
       const rect = container.getBoundingClientRect()
@@ -237,10 +250,10 @@ export default function ThreeFishSchool() {
     let animId: number
 
     const maxSpd = 0.44
-    const maxF = 0.008
+    const maxF = 0.0075
     const neighborDist = 3.0
     const separationDist = 1.25
-    const damping = 0.994
+    const damping = 0.995
 
     const io = new IntersectionObserver(
       ([e]) => { visible.current = e.isIntersecting },
@@ -267,17 +280,17 @@ export default function ThreeFishSchool() {
         f.fearTimer = Math.max(0, f.fearTimer - 0.016)
 
         if (f.cruiseTimer <= 0) {
-          f.maneuvering = Math.random() < (f.type === 'leader' ? 0.28 : 0.18)
-          f.cruiseTimer = f.maneuvering ? 0.6 + Math.random() * 0.9 : 3.2 + Math.random() * 5.5
+          f.maneuvering = Math.random() < (f.type === 'leader' ? 0.25 : 0.16)
+          f.cruiseTimer = f.maneuvering ? 0.7 + Math.random() * 1.0 : 3.5 + Math.random() * 5.5
         }
 
         const canChangeTarget = f.targetCooldown <= 0 && (f.targetTimer <= 0 || f.position.distanceTo(f.target) < 1.5)
         if (canChangeTarget) {
           const dir = f.prevDir.clone()
-          const dist = f.type === 'leader' ? 7 + Math.random() * 6 : 5 + Math.random() * 4
+          const dist = f.type === 'leader' ? 7 + Math.random() * 5 : 5.5 + Math.random() * 4
           let newTarget = f.position.clone().add(dir.multiplyScalar(dist))
 
-          if (f.type !== 'leader' && Math.random() < 0.3) {
+          if (f.type !== 'leader' && Math.random() < 0.28) {
             const zones = [
               new THREE.Vector3(-7, f.preferredY, 0),
               new THREE.Vector3(7, f.preferredY, 0),
@@ -286,7 +299,7 @@ export default function ThreeFishSchool() {
             ]
             newTarget = zones[Math.floor(Math.random() * zones.length)].clone()
             newTarget.x += (Math.random() - 0.5) * 2.5
-          } else if (f.type === 'schooler' && Math.random() < 0.22) {
+          } else if (f.type === 'schooler' && Math.random() < 0.2) {
             const other = fishes[Math.floor(Math.random() * FISH_COUNT)]
             if (other !== f) {
               const followDir = other.prevDir.clone().multiplyScalar(2.4)
@@ -295,8 +308,8 @@ export default function ThreeFishSchool() {
           }
 
           const toNew = newTarget.clone().sub(f.position).normalize()
-          if (f.prevDir.dot(toNew) < 0.1) {
-            newTarget = f.position.clone().add(f.prevDir.clone().multiplyScalar(5 + Math.random() * 3))
+          if (f.prevDir.dot(toNew) < 0.2) {
+            newTarget = f.position.clone().add(f.prevDir.clone().multiplyScalar(5.5 + Math.random() * 2.5))
           }
 
           newTarget.x = Math.max(-8.5, Math.min(8.5, newTarget.x))
@@ -304,8 +317,8 @@ export default function ThreeFishSchool() {
           newTarget.z = Math.max(-4.2, Math.min(4.2, newTarget.z))
 
           f.target.copy(newTarget)
-          f.targetTimer = 3.5 + Math.random() * 5 + (1 - f.personality) * 2
-          f.targetCooldown = 1.6 + Math.random() * 1.4
+          f.targetTimer = 3.8 + Math.random() * 5 + (1 - f.personality) * 2
+          f.targetCooldown = 1.8 + Math.random() * 1.5
         }
 
         const sep = new THREE.Vector3()
@@ -325,7 +338,7 @@ export default function ThreeFishSchool() {
               const toOther = o.position.clone().sub(f.position)
               const lateral = toOther.clone().cross(f.prevDir).cross(f.prevDir)
               if (lateral.lengthSq() > 0.01) {
-                sidePush.add(lateral.normalize().multiplyScalar(-0.35 / Math.max(d, 0.28)))
+                sidePush.add(lateral.normalize().multiplyScalar(-0.3 / Math.max(d, 0.28)))
               }
             }
             if (d > separationDist * 0.65) {
@@ -340,17 +353,16 @@ export default function ThreeFishSchool() {
 
         if (sep.lengthSq() > 0) {
           sep.normalize().multiplyScalar(maxSpd).sub(f.velocity)
-          sep.clampLength(0, maxF * 2.4)
+          sep.clampLength(0, maxF * 2.2)
           acc.add(sep)
         }
         if (sidePush.lengthSq() > 0) {
-          sidePush.clampLength(0, maxF * 0.7)
+          sidePush.clampLength(0, maxF * 0.6)
           acc.add(sidePush)
         }
 
-        // Stronger alignment + cohesion for schoolers
-        const alignStrength = f.type === 'schooler' ? 0.55 : f.type === 'leader' ? 0.15 : 0.3
-        const cohStrength = f.type === 'schooler' ? 0.4 : 0.18
+        const alignStrength = f.type === 'schooler' ? 0.5 : f.type === 'leader' ? 0.12 : 0.28
+        const cohStrength = f.type === 'schooler' ? 0.35 : 0.15
         if (count > 0 && ali.lengthSq() > 0) {
           ali.divideScalar(Math.max(count, 1)).normalize().multiplyScalar(maxSpd).sub(f.velocity)
           ali.clampLength(0, maxF * alignStrength)
@@ -359,7 +371,7 @@ export default function ThreeFishSchool() {
         if (count > 1 && coh.lengthSq() > 0) {
           coh.divideScalar(count).sub(f.position)
           if (coh.length() > 0.3) {
-            coh.normalize().multiplyScalar(maxSpd * 0.6).sub(f.velocity)
+            coh.normalize().multiplyScalar(maxSpd * 0.55).sub(f.velocity)
             coh.clampLength(0, maxF * cohStrength)
             acc.add(coh)
           }
@@ -367,13 +379,12 @@ export default function ThreeFishSchool() {
 
         const toTarget = f.target.clone().sub(f.position)
         if (toTarget.length() > 0.5) {
-          const seekStrength = f.maneuvering ? 1.05 : (f.type === 'leader' ? 0.7 : 0.5)
+          const seekStrength = f.maneuvering ? 0.95 : (f.type === 'leader' ? 0.65 : 0.48)
           toTarget.normalize().multiplyScalar(maxSpd * seekStrength).sub(f.velocity)
-          toTarget.clampLength(0, maxF * (f.maneuvering ? 1.0 : 0.55))
+          toTarget.clampLength(0, maxF * (f.maneuvering ? 0.9 : 0.5))
           acc.add(toTarget)
         }
 
-        // Mouse as graded disturbance + lingering fear
         let mouseFlee = 0
         if (mouse.x < 10) {
           const toM = f.position.clone().sub(mouseWorld)
@@ -382,88 +393,102 @@ export default function ThreeFishSchool() {
           if (md < 8.5 && md > 0.12) {
             const strength = Math.pow(Math.max(0, 1 - md / 8.5), 1.6) * sens
             if (strength > 0.04) {
-              const avoid = toM.normalize().multiplyScalar(maxSpd * strength * 1.6).sub(f.velocity)
-              avoid.clampLength(0, maxF * 2.0 * strength)
+              const avoid = toM.normalize().multiplyScalar(maxSpd * strength * 1.5).sub(f.velocity)
+              avoid.clampLength(0, maxF * 1.8 * strength)
               acc.add(avoid)
               mouseFlee = strength
-              if (strength > 0.25) f.fearTimer = Math.max(f.fearTimer, 1.2 + strength * 1.5)
+              if (strength > 0.25) f.fearTimer = Math.max(f.fearTimer, 1.0 + strength * 1.2)
             }
           }
         }
         if (f.fearTimer > 0) {
-          // lingering slight speed-up and wander after mouse leaves
-          acc.add(f.prevDir.clone().multiplyScalar(0.0012 * f.fearTimer))
+          acc.add(f.prevDir.clone().multiplyScalar(0.001 * f.fearTimer))
         }
 
-        // Soft wall repulsion (stronger near edges, no hard bounce)
+        // Soft walls only
         const wallForce = new THREE.Vector3()
-        const softX = Math.max(0, Math.abs(f.position.x) - 6.2)
-        const softY = Math.max(0, Math.abs(f.position.y) - 2.8)
-        const softZ = Math.max(0, Math.abs(f.position.z) - 3.4)
-        if (softX > 0) wallForce.x = -Math.sign(f.position.x) * softX * 0.012
-        if (softY > 0) wallForce.y = -Math.sign(f.position.y) * softY * 0.01
-        if (softZ > 0) wallForce.z = -Math.sign(f.position.z) * softZ * 0.008
+        const softX = Math.max(0, Math.abs(f.position.x) - 6.0)
+        const softY = Math.max(0, Math.abs(f.position.y) - 2.6)
+        const softZ = Math.max(0, Math.abs(f.position.z) - 3.2)
+        if (softX > 0) wallForce.x = -Math.sign(f.position.x) * softX * 0.014
+        if (softY > 0) wallForce.y = -Math.sign(f.position.y) * softY * 0.012
+        if (softZ > 0) wallForce.z = -Math.sign(f.position.z) * softZ * 0.01
         acc.add(wallForce)
 
         const yDiff = f.preferredY - f.position.y
-        const yStrength = f.type === 'lazy' ? 0.007 : 0.004
+        const yStrength = f.type === 'lazy' ? 0.0065 : 0.0038
         acc.y += yDiff * yStrength
 
-        acc.add(f.position.clone().multiplyScalar(-0.0004))
+        acc.add(f.position.clone().multiplyScalar(-0.00035))
 
-        const wanderAmp = (f.type === 'lazy' ? 0.001 : 0.0016) + f.personality * 0.0018
+        const wanderAmp = (f.type === 'lazy' ? 0.0009 : 0.0014) + f.personality * 0.0015
         acc.add(new THREE.Vector3(
-          Math.sin(time * 0.55 + f.phase) * wanderAmp,
-          Math.sin(time * 0.38 + f.phase * 1.1) * wanderAmp * 0.55,
-          Math.cos(time * 0.48 + f.phase * 0.8) * wanderAmp * 0.65
+          Math.sin(time * 0.5 + f.phase) * wanderAmp,
+          Math.sin(time * 0.35 + f.phase * 1.1) * wanderAmp * 0.5,
+          Math.cos(time * 0.45 + f.phase * 0.8) * wanderAmp * 0.6
         ))
 
         f.velocity.add(acc)
         f.velocity.multiplyScalar(damping)
 
-        // Measure turn rate BEFORE blending direction
+        // Physics direction (can change faster)
         const desiredDir = f.velocity.clone().normalize()
         const turnAngle = Math.acos(Math.max(-1, Math.min(1, f.prevDir.dot(desiredDir))))
-        f.turnRate = THREE.MathUtils.lerp(f.turnRate, Math.min(1, turnAngle * 4.2), 0.12)
+        f.turnRate = THREE.MathUtils.lerp(f.turnRate, Math.min(1, turnAngle * 3.8), 0.1)
         turnA[i] = f.turnRate
 
-        // Sign of bank from the cross product of old direction and new desired
-        const turnCrossY = f.prevDir.clone().cross(desiredDir).y
-        const bankSign = Math.sign(turnCrossY) || 0
-
-        const turnLerp = f.maneuvering ? 0.1 : (f.type === 'lazy' ? 0.025 : 0.04)
+        const turnLerp = f.maneuvering ? 0.08 : (f.type === 'lazy' ? 0.02 : 0.035)
         const blended = f.prevDir.clone().lerp(desiredDir, turnLerp).normalize()
         const spd = f.velocity.length()
         f.velocity.copy(blended).multiplyScalar(spd)
         f.prevDir.copy(blended)
 
-        // Speed drops when turning hard
-        let targetSpeed = maxSpd * (0.58 + f.speed * 0.38)
+        let targetSpeed = maxSpd * (0.58 + f.speed * 0.36)
         if (f.type === 'lazy') targetSpeed *= 0.82
-        if (f.maneuvering) targetSpeed *= 1.22
-        if (mouseFlee > 0.08) targetSpeed *= 1.05 + mouseFlee * 0.4
-        if (f.fearTimer > 0.3) targetSpeed *= 1.08
-        if (!f.maneuvering && count === 0 && f.type !== 'leader') targetSpeed *= 0.8
-        // Turn penalty
-        targetSpeed *= 1.0 - f.turnRate * 0.28
-        targetSpeed *= 1.0 + Math.sin(time * 0.85 + f.speedPhase) * 0.05
+        if (f.maneuvering) targetSpeed *= 1.18
+        if (mouseFlee > 0.08) targetSpeed *= 1.04 + mouseFlee * 0.35
+        if (f.fearTimer > 0.3) targetSpeed *= 1.06
+        if (!f.maneuvering && count === 0 && f.type !== 'leader') targetSpeed *= 0.82
+        targetSpeed *= 1.0 - f.turnRate * 0.25
+        targetSpeed *= 1.0 + Math.sin(time * 0.8 + f.speedPhase) * 0.045
         f.velocity.clampLength(0.04, Math.max(0.07, targetSpeed))
 
         f.position.add(f.velocity.clone().multiplyScalar(0.18))
 
-        // Soft safety only
-        if (Math.abs(f.position.x) > 10.5) f.velocity.x *= -0.15
-        if (Math.abs(f.position.y) > 5.6) f.velocity.y *= -0.15
-        if (Math.abs(f.position.z) > 6.4) f.velocity.z *= -0.15
+        // Gentle position clamp only (no velocity reverse)
+        f.position.x = THREE.MathUtils.clamp(f.position.x, -10.8, 10.8)
+        f.position.y = THREE.MathUtils.clamp(f.position.y, -5.8, 5.8)
+        f.position.z = THREE.MathUtils.clamp(f.position.z, -6.6, 6.6)
 
-        const dir = f.velocity.clone().normalize()
+        // ---- Visual orientation: smoothed direction + slerp, no lookAt flips ----
+        const physDir = f.velocity.clone().normalize()
+        f.visualDir.lerp(physDir, 0.07).normalize()
+
+        // Bank
+        const turnCrossY = f.visualDir.clone().cross(physDir).y
+        const targetBank = (Math.sign(turnCrossY) || 0) * f.turnRate * 0.32
+        f.bank = THREE.MathUtils.lerp(f.bank, targetBank, 0.05)
+
+        // Build target quaternion stably
+        const targetDummy = new THREE.Object3D()
+        targetDummy.position.copy(f.position)
+        // Use a point ahead of visualDir so lookAt is stable
+        const lookPoint = f.position.clone().add(f.visualDir)
+        targetDummy.lookAt(lookPoint)
+        targetDummy.rotateY(Math.PI)
+        targetDummy.rotateX(f.bank)
+        targetDummy.updateMatrix()
+
+        // Slerp visual quaternion toward target (prevents snaps)
+        if (!f.visualQuat) f.visualQuat = new THREE.Quaternion()
+        const targetQuat = new THREE.Quaternion().setFromRotationMatrix(targetDummy.matrix)
+        f.visualQuat.slerp(targetQuat, 0.12)
+
         dummy.position.copy(f.position)
-        dummy.lookAt(f.position.clone().add(dir))
-        dummy.rotateY(Math.PI)
-        // Banking around local X (forward) using the pre-blend turn sign
-        const bank = f.turnRate * 0.48 * bankSign
-        dummy.rotateX(bank)
+        dummy.quaternion.copy(f.visualQuat)
+        dummy.scale.set(1, 1, 1)
         dummy.updateMatrix()
+
         bodyMesh.setMatrixAt(i, dummy.matrix)
         tailMesh.setMatrixAt(i, dummy.matrix)
       }
