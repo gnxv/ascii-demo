@@ -62,30 +62,17 @@ export default function ThreeFishSchool() {
     dirLight.position.set(2, 4, 6)
     scene.add(dirLight)
 
-    // Body: elongated octahedron with side vertices shifted toward the head
-    const bodyGeo = new THREE.OctahedronGeometry(0.85, 0)
+    // Body: large tetrahedron, tip forward
+    const bodyGeo = new THREE.TetrahedronGeometry(0.9, 0)
     bodyGeo.rotateZ(Math.PI / 2)
-    {
-      const pos = bodyGeo.attributes.position
-      for (let i = 0; i < pos.count; i++) {
-        const x = pos.getX(i)
-        // Side (equatorial) vertices are near x ≈ 0; push them forward (positive X = head)
-        if (Math.abs(x) < 0.35) {
-          pos.setX(i, x + 0.42)
-        }
-      }
-      pos.needsUpdate = true
-      bodyGeo.computeVertexNormals()
-    }
-    bodyGeo.scale(1.65, 0.72, 0.62)
+    bodyGeo.rotateY(Math.PI)
+    bodyGeo.scale(1.55, 0.8, 0.7)
 
-    // Tail: two small tetrahedrons
-    const tailGeoL = new THREE.TetrahedronGeometry(0.38, 0)
-    tailGeoL.rotateZ(-Math.PI / 2)
-    tailGeoL.scale(1.15, 0.75, 0.55)
-    tailGeoL.translate(-1.12, 0.12, 0)
-    const tailGeoR = tailGeoL.clone()
-    tailGeoR.translate(0, -0.24, 0)
+    // Tail: smaller tetrahedron attached at the rear
+    const tailGeo = new THREE.TetrahedronGeometry(0.42, 0)
+    tailGeo.rotateZ(-Math.PI / 2)
+    tailGeo.scale(1.1, 0.75, 0.6)
+    tailGeo.translate(-1.15, 0, 0)
 
     const neonMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
@@ -232,26 +219,18 @@ export default function ThreeFishSchool() {
     bodyGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
     bodyGeo.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
 
-    tailGeoL.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
-    tailGeoL.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
-    tailGeoL.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
-    tailGeoL.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
-    tailGeoR.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
-    tailGeoR.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
-    tailGeoR.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
-    tailGeoR.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
+    tailGeo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
+    tailGeo.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
+    tailGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
+    tailGeo.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
 
     const bodyMesh = new THREE.InstancedMesh(bodyGeo, neonMat, FISH_COUNT)
     bodyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     scene.add(bodyMesh)
 
-    const tailMeshL = new THREE.InstancedMesh(tailGeoL, neonMat, FISH_COUNT)
-    tailMeshL.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    scene.add(tailMeshL)
-
-    const tailMeshR = new THREE.InstancedMesh(tailGeoR, neonMat, FISH_COUNT)
-    tailMeshR.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    scene.add(tailMeshR)
+    const tailMesh = new THREE.InstancedMesh(tailGeo, neonMat, FISH_COUNT)
+    tailMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(tailMesh)
 
     const dummy = new THREE.Object3D()
     const mouse = new THREE.Vector2(999, 999)
@@ -511,16 +490,13 @@ export default function ThreeFishSchool() {
         dummy.updateMatrix()
 
         bodyMesh.setMatrixAt(i, dummy.matrix)
-        tailMeshL.setMatrixAt(i, dummy.matrix)
-        tailMeshR.setMatrixAt(i, dummy.matrix)
+        tailMesh.setMatrixAt(i, dummy.matrix)
       }
 
       bodyGeo.attributes.aTurn.needsUpdate = true
-      tailGeoL.attributes.aTurn.needsUpdate = true
-      tailGeoR.attributes.aTurn.needsUpdate = true
+      tailGeo.attributes.aTurn.needsUpdate = true
       bodyMesh.instanceMatrix.needsUpdate = true
-      tailMeshL.instanceMatrix.needsUpdate = true
-      tailMeshR.instanceMatrix.needsUpdate = true
+      tailMesh.instanceMatrix.needsUpdate = true
 
       camera.position.x = Math.sin(time * 0.05) * 0.5
       camera.lookAt(0, 0, 0)
@@ -543,8 +519,7 @@ export default function ThreeFishSchool() {
       container.removeEventListener('pointermove', onMove)
       renderer.dispose()
       bodyGeo.dispose()
-      tailGeoL.dispose()
-      tailGeoR.dispose()
+      tailGeo.dispose()
       neonMat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
