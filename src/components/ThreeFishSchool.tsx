@@ -62,34 +62,23 @@ export default function ThreeFishSchool() {
     dirLight.position.set(2, 4, 6)
     scene.add(dirLight)
 
-    // Body: tetrahedron, tip forward
-    const bodyGeo = new THREE.TetrahedronGeometry(0.82, 0)
+    // Body: elongated octahedron
+    const bodyGeo = new THREE.OctahedronGeometry(0.85, 0)
     bodyGeo.rotateZ(Math.PI / 2)
-    bodyGeo.rotateY(Math.PI)
-    bodyGeo.scale(1.5, 0.78, 0.68)
+    bodyGeo.scale(1.65, 0.72, 0.62)
 
-    // Tail: flat rhombus (diamond)
-    const tailShape = new THREE.Shape()
-    tailShape.moveTo(0, 0.38)
-    tailShape.lineTo(0.55, 0)
-    tailShape.lineTo(0, -0.38)
-    tailShape.lineTo(-0.35, 0)
-    tailShape.closePath()
-    const tailGeo = new THREE.ShapeGeometry(tailShape)
-    tailGeo.rotateY(Math.PI / 2)
-    tailGeo.translate(-1.15, 0, 0)
-
-    // Side fins: small triangles
-    const finShape = new THREE.Shape()
-    finShape.moveTo(0, 0)
-    finShape.lineTo(0.42, 0.08)
-    finShape.lineTo(0.12, -0.22)
-    finShape.closePath()
-    const finGeoL = new THREE.ShapeGeometry(finShape)
-    finGeoL.rotateX(Math.PI / 2)
-    finGeoL.translate(0.15, 0, 0.42)
-    const finGeoR = finGeoL.clone()
-    finGeoR.scale(1, 1, -1)
+    // Tail: two triangles (slightly splayed)
+    const triShape = new THREE.Shape()
+    triShape.moveTo(0, 0)
+    triShape.lineTo(0.48, 0.32)
+    triShape.lineTo(0.15, -0.05)
+    triShape.closePath()
+    const tailGeoL = new THREE.ShapeGeometry(triShape)
+    tailGeoL.rotateY(Math.PI / 2)
+    tailGeoL.translate(-1.05, 0.08, 0)
+    const tailGeoR = tailGeoL.clone()
+    tailGeoR.scale(1, -1, 1)
+    tailGeoR.translate(0, -0.16, 0)
 
     const neonMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
@@ -236,36 +225,26 @@ export default function ThreeFishSchool() {
     bodyGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
     bodyGeo.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
 
-    tailGeo.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
-    tailGeo.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
-    tailGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
-    tailGeo.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
-
-    finGeoL.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
-    finGeoL.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
-    finGeoL.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
-    finGeoL.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
-
-    finGeoR.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
-    finGeoR.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
-    finGeoR.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
-    finGeoR.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
+    tailGeoL.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
+    tailGeoL.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
+    tailGeoL.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
+    tailGeoL.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
+    tailGeoR.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
+    tailGeoR.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
+    tailGeoR.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
+    tailGeoR.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
 
     const bodyMesh = new THREE.InstancedMesh(bodyGeo, neonMat, FISH_COUNT)
     bodyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     scene.add(bodyMesh)
 
-    const tailMesh = new THREE.InstancedMesh(tailGeo, neonMat, FISH_COUNT)
-    tailMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    scene.add(tailMesh)
+    const tailMeshL = new THREE.InstancedMesh(tailGeoL, neonMat, FISH_COUNT)
+    tailMeshL.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(tailMeshL)
 
-    const finMeshL = new THREE.InstancedMesh(finGeoL, neonMat, FISH_COUNT)
-    finMeshL.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    scene.add(finMeshL)
-
-    const finMeshR = new THREE.InstancedMesh(finGeoR, neonMat, FISH_COUNT)
-    finMeshR.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
-    scene.add(finMeshR)
+    const tailMeshR = new THREE.InstancedMesh(tailGeoR, neonMat, FISH_COUNT)
+    tailMeshR.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(tailMeshR)
 
     const dummy = new THREE.Object3D()
     const mouse = new THREE.Vector2(999, 999)
@@ -525,19 +504,16 @@ export default function ThreeFishSchool() {
         dummy.updateMatrix()
 
         bodyMesh.setMatrixAt(i, dummy.matrix)
-        tailMesh.setMatrixAt(i, dummy.matrix)
-        finMeshL.setMatrixAt(i, dummy.matrix)
-        finMeshR.setMatrixAt(i, dummy.matrix)
+        tailMeshL.setMatrixAt(i, dummy.matrix)
+        tailMeshR.setMatrixAt(i, dummy.matrix)
       }
 
       bodyGeo.attributes.aTurn.needsUpdate = true
-      tailGeo.attributes.aTurn.needsUpdate = true
-      finGeoL.attributes.aTurn.needsUpdate = true
-      finGeoR.attributes.aTurn.needsUpdate = true
+      tailGeoL.attributes.aTurn.needsUpdate = true
+      tailGeoR.attributes.aTurn.needsUpdate = true
       bodyMesh.instanceMatrix.needsUpdate = true
-      tailMesh.instanceMatrix.needsUpdate = true
-      finMeshL.instanceMatrix.needsUpdate = true
-      finMeshR.instanceMatrix.needsUpdate = true
+      tailMeshL.instanceMatrix.needsUpdate = true
+      tailMeshR.instanceMatrix.needsUpdate = true
 
       camera.position.x = Math.sin(time * 0.05) * 0.5
       camera.lookAt(0, 0, 0)
@@ -560,9 +536,8 @@ export default function ThreeFishSchool() {
       container.removeEventListener('pointermove', onMove)
       renderer.dispose()
       bodyGeo.dispose()
-      tailGeo.dispose()
-      finGeoL.dispose()
-      finGeoR.dispose()
+      tailGeoL.dispose()
+      tailGeoR.dispose()
       neonMat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
