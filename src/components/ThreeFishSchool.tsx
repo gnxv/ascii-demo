@@ -62,15 +62,34 @@ export default function ThreeFishSchool() {
     dirLight.position.set(2, 4, 6)
     scene.add(dirLight)
 
-    const bodyGeo = new THREE.TetrahedronGeometry(0.78, 0)
+    // Body: tetrahedron, tip forward
+    const bodyGeo = new THREE.TetrahedronGeometry(0.82, 0)
     bodyGeo.rotateZ(Math.PI / 2)
     bodyGeo.rotateY(Math.PI)
-    bodyGeo.scale(1.45, 0.82, 0.72)
+    bodyGeo.scale(1.5, 0.78, 0.68)
 
-    const tailGeo = new THREE.TetrahedronGeometry(0.42, 0)
-    tailGeo.rotateZ(-Math.PI / 2)
-    tailGeo.scale(1.05, 0.78, 0.62)
-    tailGeo.translate(-1.05, 0, 0)
+    // Tail: flat rhombus (diamond)
+    const tailShape = new THREE.Shape()
+    tailShape.moveTo(0, 0.38)
+    tailShape.lineTo(0.55, 0)
+    tailShape.lineTo(0, -0.38)
+    tailShape.lineTo(-0.35, 0)
+    tailShape.closePath()
+    const tailGeo = new THREE.ShapeGeometry(tailShape)
+    tailGeo.rotateY(Math.PI / 2)
+    tailGeo.translate(-1.15, 0, 0)
+
+    // Side fins: small triangles
+    const finShape = new THREE.Shape()
+    finShape.moveTo(0, 0)
+    finShape.lineTo(0.42, 0.08)
+    finShape.lineTo(0.12, -0.22)
+    finShape.closePath()
+    const finGeoL = new THREE.ShapeGeometry(finShape)
+    finGeoL.rotateX(Math.PI / 2)
+    finGeoL.translate(0.15, 0, 0.42)
+    const finGeoR = finGeoL.clone()
+    finGeoR.scale(1, 1, -1)
 
     const neonMat = new THREE.ShaderMaterial({
       uniforms: { uTime: { value: 0 } },
@@ -222,6 +241,16 @@ export default function ThreeFishSchool() {
     tailGeo.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
     tailGeo.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
 
+    finGeoL.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
+    finGeoL.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
+    finGeoL.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
+    finGeoL.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
+
+    finGeoR.setAttribute('aPhase', new THREE.InstancedBufferAttribute(phaseA, 1))
+    finGeoR.setAttribute('aHue', new THREE.InstancedBufferAttribute(hueA, 1))
+    finGeoR.setAttribute('aSize', new THREE.InstancedBufferAttribute(sizeA, 1))
+    finGeoR.setAttribute('aTurn', new THREE.InstancedBufferAttribute(turnA, 1))
+
     const bodyMesh = new THREE.InstancedMesh(bodyGeo, neonMat, FISH_COUNT)
     bodyMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     scene.add(bodyMesh)
@@ -229,6 +258,14 @@ export default function ThreeFishSchool() {
     const tailMesh = new THREE.InstancedMesh(tailGeo, neonMat, FISH_COUNT)
     tailMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     scene.add(tailMesh)
+
+    const finMeshL = new THREE.InstancedMesh(finGeoL, neonMat, FISH_COUNT)
+    finMeshL.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(finMeshL)
+
+    const finMeshR = new THREE.InstancedMesh(finGeoR, neonMat, FISH_COUNT)
+    finMeshR.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    scene.add(finMeshR)
 
     const dummy = new THREE.Object3D()
     const mouse = new THREE.Vector2(999, 999)
@@ -472,14 +509,12 @@ export default function ThreeFishSchool() {
         // Build target quaternion stably
         const targetDummy = new THREE.Object3D()
         targetDummy.position.copy(f.position)
-        // Use a point ahead of visualDir so lookAt is stable
         const lookPoint = f.position.clone().add(f.visualDir)
         targetDummy.lookAt(lookPoint)
         targetDummy.rotateY(Math.PI)
         targetDummy.rotateX(f.bank)
         targetDummy.updateMatrix()
 
-        // Slerp visual quaternion toward target (prevents snaps)
         if (!f.visualQuat) f.visualQuat = new THREE.Quaternion()
         const targetQuat = new THREE.Quaternion().setFromRotationMatrix(targetDummy.matrix)
         f.visualQuat.slerp(targetQuat, 0.12)
@@ -491,12 +526,18 @@ export default function ThreeFishSchool() {
 
         bodyMesh.setMatrixAt(i, dummy.matrix)
         tailMesh.setMatrixAt(i, dummy.matrix)
+        finMeshL.setMatrixAt(i, dummy.matrix)
+        finMeshR.setMatrixAt(i, dummy.matrix)
       }
 
       bodyGeo.attributes.aTurn.needsUpdate = true
       tailGeo.attributes.aTurn.needsUpdate = true
+      finGeoL.attributes.aTurn.needsUpdate = true
+      finGeoR.attributes.aTurn.needsUpdate = true
       bodyMesh.instanceMatrix.needsUpdate = true
       tailMesh.instanceMatrix.needsUpdate = true
+      finMeshL.instanceMatrix.needsUpdate = true
+      finMeshR.instanceMatrix.needsUpdate = true
 
       camera.position.x = Math.sin(time * 0.05) * 0.5
       camera.lookAt(0, 0, 0)
@@ -520,6 +561,8 @@ export default function ThreeFishSchool() {
       renderer.dispose()
       bodyGeo.dispose()
       tailGeo.dispose()
+      finGeoL.dispose()
+      finGeoR.dispose()
       neonMat.dispose()
       if (renderer.domElement.parentNode) {
         renderer.domElement.parentNode.removeChild(renderer.domElement)
